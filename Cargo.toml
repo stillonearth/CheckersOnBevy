@@ -1,0 +1,10 @@
+[package]
+edition = "2021"
+name = "checkers"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+bevy = {version = "0.6.0"}
+bevy-inspector-egui = {version = "0.7.2"}
+bevy_mod_picking  = {git="https://github.com/aevyrie/bevy_mod_picking"}
