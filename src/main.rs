@@ -1,12 +1,14 @@
 use bevy::pbr::*;
 use bevy::prelude::*;
-use bevy_inspector_egui::WorldInspectorPlugin;
+// use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 
 mod pieces;
-use pieces::*;
+use crate::pieces::*;
 mod board;
 use board::*;
+mod materials;
+use materials::*;
 
 fn main() {
     App::new()
@@ -20,23 +22,20 @@ fn main() {
             height: 800.,
             ..Default::default()
         })
+        // Entry Point
+        .add_startup_system(setup.system())
+        // External Plugins
         .add_plugins(DefaultPlugins)
         .add_plugin(PickingPlugin)
+        .add_plugin(InteractablePickingPlugin)
         .add_plugin(HighlightablePickingPlugin)
         // .add_plugin(WorldInspectorPlugin::new())
-        .add_startup_system(setup)
-        .add_startup_system(create_board)
-        .add_startup_system(create_pieces)
+        // Application Plugins
+        .init_resource::<SquareMaterials>()
+        .add_plugin(PiecesPlugin)
+        .add_plugin(BoardPlugin)
         .run();
 }
-
-// ---
-// Entities
-// ---
-
-// ---
-// Components
-// ---
 
 // ---
 // Systems
@@ -47,7 +46,7 @@ fn setup(mut commands: Commands) {
     commands.spawn_bundle(PointLightBundle {
         point_light: PointLight {
             intensity: 5000.0,
-            shadows_enabled: true,
+            shadows_enabled: false,
             ..Default::default()
         },
         transform: Transform::from_xyz(4.0, 8.0, 4.),
@@ -57,12 +56,11 @@ fn setup(mut commands: Commands) {
     // Camera
     commands
         .spawn_bundle(PerspectiveCameraBundle {
-            transform: Transform::from_xyz(0.0, 8.0, 11.).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_matrix(Mat4::from_rotation_translation(
+                Quat::from_xyzw(-0.3, -0.5, -0.3, 0.5).normalize(),
+                Vec3::new(-7.0, 20.0, 4.0),
+            )),
             ..Default::default()
         })
         .insert_bundle(PickingCameraBundle::default());
 }
-
-// ---
-// Plugins
-// ---
