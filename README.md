@@ -54,13 +54,79 @@
 
 Теперь когда снова начинается разработка игр, конечно может и стоит снова вернуться к плюсам, и вроде бы за 10 лет многое поменялось, но когда на Расте появляются новые операционные системы, игровые движки с живым сообществом, я не могу отказать себе в удовольствии поднять ржавое. Заржаветь короче.
 
-Итак, что такое Раст?
+Итак, что такое Раст? 
 
 ### Основые возможности Rust
 
+#### Управление памятью, mutables, ссылки
+
+#### Аннотации
+
+#### Объекты
+
+#### Модули и crates
+
 ### Bevy
 
-#### Паттерн ECS
+[Bevy](https://bevyengine.org/) — это относительно простой игровой движок на Rust. Bevy умеет в 3D и 2D, выпускается под лицензией MIT, свободен от роялти платежей. Bevy мультиплатформенный, и может работать в Windows, Linux, браузере в wasm, android, ios и VR.
+
+Выбрав самый горячий пирожок в булочной, наивно полагать что не обожжешься, и первое что надо сделать это разобраться в архитектуре.
+
+#### ECS
+
+Логика приложения в Bevy подчинена паттерну [Entity Component System (ECS)](https://en.wikipedia.org/wiki/Entity_component_system). ECS — это MVC игровой индустрии.
+
+##### Entity
+
+Сущность, объект игрового мира, композиция компонентов. Подобен модели в MVC.
+
+```rust
+struct NPC(u64) {
+    position: Option<Position>,
+    name: String,
+}
+```
+
+##### Component
+
+Аттрибут entity, например позиция или момент. 
+
+```rust
+#[derive(Component)]
+struct Position { 
+    x: f32, 
+    y: f32 
+}
+```
+
+##### System
+
+Система подобна контроллеру в MVC, отвечает за логику, например за перемещение, коллизии или ИИ. Система оперирует сущностями.
+
+```rust
+fn print_position_system(query: Query<&NPC, &Transform>) {
+    for (npc, transform) in query.iter() {
+        println!("NPC {} at position: {:?}", npc, transform.translation);
+    }
+}
+```
+
+#### Dependency Injection и Plugins
+
+Bevy является модулярным и полагается на паттерн Dependency Injection (DI). DI позволяет внедрять компоненты в приложение, и обращаться к ним благодаря рефлексии или шаблонным функциям.
+
+Плагин в bevy объединяет систему с её сущностями, описывает композицию систем.
+
+```rust
+pub struct PiecesPlugin;
+impl Plugin for PiecesPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(create_pieces.system())
+            .add_system(highlight_piece.system())
+            .add_system(move_pieces.system());
+    }
+}
+```
 
 ## Шашка 
 
