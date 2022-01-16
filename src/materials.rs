@@ -1,30 +1,29 @@
 use bevy::pbr::*;
 use bevy::prelude::*;
-use bevy_mod_picking::*;
 
-// ---
-// Resources -- Global Variables
-// ---
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Color {
+    White,
+    Black,
+}
 
-// Materials
-
-pub struct SquareMaterials {
+pub struct Materials {
     pub selected_color: Handle<StandardMaterial>,
     pub black_color: Handle<StandardMaterial>,
     pub white_color: Handle<StandardMaterial>,
 }
 
-impl FromWorld for SquareMaterials {
+impl FromWorld for Materials {
     fn from_world(world: &mut World) -> Self {
         let world = world.cell();
-        let mut materials = world
+        let mut materials_asset = world
             .get_resource_mut::<Assets<StandardMaterial>>()
             .unwrap();
 
-        SquareMaterials {
-            selected_color: materials.add(Color::rgb(0.9, 0.1, 0.1).into()),
-            black_color: materials.add(Color::rgb(0., 0.1, 0.1).into()),
-            white_color: materials.add(Color::rgb(1., 0.9, 0.9).into()),
+        Materials {
+            selected_color: materials_asset.add(bevy::prelude::Color::rgb(0.9, 0.1, 0.1).into()),
+            black_color: materials_asset.add(bevy::prelude::Color::rgb(0., 0.1, 0.1).into()),
+            white_color: materials_asset.add(bevy::prelude::Color::rgb(1., 0.9, 0.9).into()),
         }
     }
 }

@@ -1,11 +1,10 @@
 use bevy::pbr::*;
 use bevy::prelude::*;
-// use bevy_inspector_egui::WorldInspectorPlugin;
+use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 
-mod pieces;
-use crate::pieces::*;
 mod board;
+mod pieces;
 use board::*;
 mod materials;
 use materials::*;
@@ -29,10 +28,9 @@ fn main() {
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         .add_plugin(HighlightablePickingPlugin)
-        // .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(WorldInspectorPlugin::new())
         // Application Plugins
-        .init_resource::<SquareMaterials>()
-        .add_plugin(PiecesPlugin)
+        .init_resource::<Materials>()
         .add_plugin(BoardPlugin)
         .run();
 }
@@ -45,11 +43,11 @@ fn setup(mut commands: Commands) {
     // Light
     commands.spawn_bundle(PointLightBundle {
         point_light: PointLight {
-            intensity: 5000.0,
+            intensity: 3000.0,
             shadows_enabled: false,
             ..Default::default()
         },
-        transform: Transform::from_xyz(4.0, 8.0, 4.),
+        transform: Transform::from_xyz(7.5, 8.0, 3.5),
         ..Default::default()
     });
 
