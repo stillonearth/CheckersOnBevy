@@ -76,11 +76,64 @@ impl Piece {
                 let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
                     == (self.x as i8 - new_square.x as i8).abs();
                 let path_nonblocking =
-                    is_path_empty((self.x, self.y), (new_square.x, new_square.y), pieces);
+                    self.is_path_empty((self.x, self.y), (new_square.x, new_square.y), pieces);
 
                 return (horizontal_move || vertical_move || diagonal_move) && path_nonblocking;
             }
         }
+    }
+
+    pub fn is_path_empty(&self, begin: (u8, u8), end: (u8, u8), pieces: &Vec<Piece>) -> bool {
+        // Same column
+        if begin.0 == end.0 {
+            for piece in pieces {
+                if piece.x == begin.0
+                    && ((piece.y > begin.1 && piece.y < end.1)
+                        || (piece.y > end.1 && piece.y < begin.1))
+                {
+                    return false;
+                }
+            }
+        }
+        // Same row
+        if begin.1 == end.1 {
+            for piece in pieces {
+                if piece.y == begin.1
+                    && ((piece.x > begin.0 && piece.x < end.0)
+                        || (piece.x > end.0 && piece.x < begin.0))
+                {
+                    return false;
+                }
+            }
+        }
+
+        // Diagonals
+        let x_diff = (begin.0 as i8 - end.0 as i8).abs();
+        let y_diff = (begin.1 as i8 - end.1 as i8).abs();
+        if x_diff == y_diff {
+            for i in 1..x_diff {
+                let pos = if begin.0 < end.0 && begin.1 < end.1 {
+                    // left bottom - right top
+                    (begin.0 + i as u8, begin.1 + i as u8)
+                } else if begin.0 < end.0 && begin.1 > end.1 {
+                    // left top - right bottom
+                    (begin.0 + i as u8, begin.1 - i as u8)
+                } else if begin.0 > end.0 && begin.1 < end.1 {
+                    // right bottom - left top
+                    (begin.0 - i as u8, begin.1 + i as u8)
+                } else {
+                    // begin.0 > end.0 && begin.1 > end.1
+                    // right top - left bottom
+                    (begin.0 - i as u8, begin.1 - i as u8)
+                };
+
+                if color_of_square(pos, pieces).is_some() {
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 }
 
@@ -96,59 +149,6 @@ pub fn color_of_square(pos: (u8, u8), pieces: &Vec<Piece>) -> Option<materials::
         }
     }
     None
-}
-
-fn is_path_empty(begin: (u8, u8), end: (u8, u8), pieces: &Vec<Piece>) -> bool {
-    // Same column
-    if begin.0 == end.0 {
-        for piece in pieces {
-            if piece.x == begin.0
-                && ((piece.y > begin.1 && piece.y < end.1)
-                    || (piece.y > end.1 && piece.y < begin.1))
-            {
-                return false;
-            }
-        }
-    }
-    // Same row
-    if begin.1 == end.1 {
-        for piece in pieces {
-            if piece.y == begin.1
-                && ((piece.x > begin.0 && piece.x < end.0)
-                    || (piece.x > end.0 && piece.x < begin.0))
-            {
-                return false;
-            }
-        }
-    }
-
-    // Diagonals
-    let x_diff = (begin.0 as i8 - end.0 as i8).abs();
-    let y_diff = (begin.1 as i8 - end.1 as i8).abs();
-    if x_diff == y_diff {
-        for i in 1..x_diff {
-            let pos = if begin.0 < end.0 && begin.1 < end.1 {
-                // left bottom - right top
-                (begin.0 + i as u8, begin.1 + i as u8)
-            } else if begin.0 < end.0 && begin.1 > end.1 {
-                // left top - right bottom
-                (begin.0 + i as u8, begin.1 - i as u8)
-            } else if begin.0 > end.0 && begin.1 < end.1 {
-                // right bottom - left top
-                (begin.0 - i as u8, begin.1 + i as u8)
-            } else {
-                // begin.0 > end.0 && begin.1 > end.1
-                // right top - left bottom
-                (begin.0 - i as u8, begin.1 - i as u8)
-            };
-
-            if color_of_square(pos, pieces).is_some() {
-                return false;
-            }
-        }
-    }
-
-    true
 }
 
 // ---

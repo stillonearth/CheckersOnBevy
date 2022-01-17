@@ -69,6 +69,7 @@ pub fn create_board(
 }
 
 fn select_square(
+    mut commands: Commands,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<pieces::SelectedPiece>,
     mut event_reader: EventReader<PickingEvent>,
@@ -79,42 +80,53 @@ fn select_square(
         match event {
             PickingEvent::Selection(selection_event) => match selection_event {
                 SelectionEvent::JustSelected(selection_event) => {
+                    // Square
                     let chosen_square = Some(*selection_event);
-
                     selected_square.entity = chosen_square;
-
                     let square = square_query.get(*selection_event).unwrap().1;
-                    let mut user_selected_new_piece = false;
 
-                    let piece = pieces_query
-                        .iter()
-                        .filter(|(_, p)| p.x == square.x && p.y == square.y)
-                        .nth(0);
-
-                    match piece {
-                        Some((e, _)) => {
-                            user_selected_new_piece = true;
-                            selected_piece.entity = Some(e);
-                        }
-                        _ => {}
-                    }
-
-                    if user_selected_new_piece || selected_piece.entity == None {
-                        return;
-                    }
-
-                    // borrowing space 1 -- collecting ummutable collection of Pieces
+                    // Piece
                     let piece_vec: Vec<pieces::Piece> =
                         pieces_query.iter().map(|(_, piece)| *piece).collect();
 
-                    // borrowing space 2 -- selecting reference to currenty selcted piece
-                    let mut piece: Mut<pieces::Piece> = pieces_query
-                        .get_mut(selected_piece.entity.unwrap())
-                        .unwrap()
-                        .1;
+                    let new_piece_option = pieces_query
+                        .iter()
+                        .filter(|(_, p)| p.x == square.x && p.y == square.y)
+                        .nth(0);
+                    let mut new_entity: Option<Entity> = None;
 
-                    if piece.is_move_valid(square, &piece_vec) {
-                        piece.move_to_square(square);
+                    match new_piece_option {
+                        // Square  hold piece
+                        Some((e, _)) => {
+                            new_entity = Some(e);
+                        }
+
+                        // Square doesn't hold piece
+                        _ => {}
+                    }
+
+                    // Another piece is already selected
+                    if selected_piece.entity != None {
+                        let mut old_piece = pieces_query
+                            .get_mut(selected_piece.entity.unwrap())
+                            .unwrap()
+                            .1;
+
+                        if old_piece.is_move_valid(square, &piece_vec) {
+                            old_piece.move_to_square(square);
+
+                            if new_entity != None {
+                                commands.entity(new_entity.unwrap()).despawn();
+                            }
+
+                            return;
+                        } else {
+                            info!("move is not valid!");
+                        }
+                    }
+
+                    if new_entity != None {
+                        selected_piece.entity = new_entity;
                     }
                 }
                 _ => {}
