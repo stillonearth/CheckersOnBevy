@@ -28,7 +28,7 @@ fn main() {
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         .add_plugin(HighlightablePickingPlugin)
-        .add_plugin(WorldInspectorPlugin::new())
+        // .add_plugin(WorldInspectorPlugin::new())
         // Application Plugins
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin)

@@ -103,21 +103,25 @@ fn select_square(
                         return;
                     }
 
-                    let mut piece = pieces_query
+                    // borrowing space 1 -- collecting ummutable collection of Pieces
+                    let piece_vec: Vec<pieces::Piece> =
+                        pieces_query.iter().map(|(_, piece)| *piece).collect();
+
+                    // borrowing space 2 -- selecting reference to currenty selcted piece
+                    let mut piece: Mut<pieces::Piece> = pieces_query
                         .get_mut(selected_piece.entity.unwrap())
                         .unwrap()
                         .1;
-                    piece.move_to_square(square);
 
-                    info!("{:?} new position", (piece.x, piece.y));
+                    if piece.is_move_valid(square, &piece_vec) {
+                        piece.move_to_square(square);
+                    }
                 }
                 _ => {}
             },
             _ => {}
         }
     }
-
-    // for
 }
 
 fn highlight_square(
