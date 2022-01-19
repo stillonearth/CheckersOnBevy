@@ -6,7 +6,7 @@ use bevy_mod_picking::*;
 use crate::materials;
 use crate::pieces;
 
-// Selected Square
+// Entities
 
 #[derive(Default)]
 pub struct SelectedSquare {
@@ -19,9 +19,19 @@ pub struct SelectedPiece {
 }
 
 pub struct PlayerTurn(pub materials::Color);
+
 impl Default for PlayerTurn {
     fn default() -> Self {
         Self(materials::Color::White)
+    }
+}
+
+impl PlayerTurn {
+    pub fn change(&mut self) {
+        self.0 = match self.0 {
+            materials::Color::White => materials::Color::Black,
+            materials::Color::Black => materials::Color::White,
+        }
     }
 }
 
@@ -153,10 +163,7 @@ fn select_square(
                         if old_piece.is_move_valid(square, &piece_vec) {
                             old_piece.move_to_square(square);
 
-                            turn.0 = match turn.0 {
-                                materials::Color::White => materials::Color::Black,
-                                materials::Color::Black => materials::Color::White,
-                            };
+                            turn.change();
 
                             selected_piece.entity = None;
                             selected_square.entity = None;
