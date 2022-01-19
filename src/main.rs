@@ -8,6 +8,8 @@ mod pieces;
 use board::*;
 mod materials;
 use materials::*;
+mod ui;
+use ui::*;
 
 fn main() {
     App::new()
@@ -28,10 +30,11 @@ fn main() {
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         .add_plugin(HighlightablePickingPlugin)
-        // .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(WorldInspectorPlugin::new())
         // Application Plugins
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin)
+        .add_plugin(UIPlugin)
         .run();
 }
 
@@ -51,13 +54,17 @@ fn setup(mut commands: Commands) {
         ..Default::default()
     });
 
+    let mut camera_transform = Transform::from_matrix(Mat4::from_rotation_translation(
+        Quat::from_xyzw(-0.3, -0.5, -0.3, 0.5).normalize(),
+        Vec3::new(-7.0, 20.0, 4.0),
+    ));
+
+    camera_transform.scale.z = 2.0;
+
     // Camera
     commands
         .spawn_bundle(PerspectiveCameraBundle {
-            transform: Transform::from_matrix(Mat4::from_rotation_translation(
-                Quat::from_xyzw(-0.3, -0.5, -0.3, 0.5).normalize(),
-                Vec3::new(-7.0, 20.0, 4.0),
-            )),
+            transform: camera_transform,
             ..Default::default()
         })
         .insert_bundle(PickingCameraBundle::default());

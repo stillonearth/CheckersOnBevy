@@ -1,5 +1,6 @@
+use bevy::ecs::event::*;
 use bevy::pbr::*;
-use bevy::prelude::*;
+use bevy::{app::AppExit, prelude::*};
 use bevy_mod_picking::*;
 
 use crate::materials;
@@ -10,6 +11,18 @@ use crate::pieces;
 #[derive(Default)]
 pub struct SelectedSquare {
     entity: Option<Entity>,
+}
+
+#[derive(Default)]
+pub struct SelectedPiece {
+    pub entity: Option<Entity>,
+}
+
+pub struct PlayerTurn(pub materials::Color);
+impl Default for PlayerTurn {
+    fn default() -> Self {
+        Self(materials::Color::White)
+    }
 }
 
 // ---
@@ -71,8 +84,10 @@ pub fn create_board(
 fn select_square(
     mut commands: Commands,
     mut selected_square: ResMut<SelectedSquare>,
-    mut selected_piece: ResMut<pieces::SelectedPiece>,
+    mut selected_piece: ResMut<SelectedPiece>,
+    mut turn: ResMut<PlayerTurn>,
     mut event_reader: EventReader<PickingEvent>,
+    mut app_exit_events: ResMut<Events<AppExit>>,
     square_query: Query<(Entity, &Square)>,
     mut pieces_query: Query<(Entity, &mut pieces::Piece)>,
 ) {
@@ -89,16 +104,39 @@ fn select_square(
                     let piece_vec: Vec<pieces::Piece> =
                         pieces_query.iter().map(|(_, piece)| *piece).collect();
 
+                    // Game end condition check
+                    let number_of_whites = piece_vec
+                        .iter()
+                        .filter(|p| p.color == materials::Color::White)
+                        .count();
+                    let number_of_blacks = piece_vec
+                        .iter()
+                        .filter(|p| p.color == materials::Color::Black)
+                        .count();
+
+                    if number_of_whites == 0 || number_of_blacks == 0 {
+                        println!(
+                            "{} won! Thanks for playing!",
+                            match turn.0 {
+                                materials::Color::White => "Black",
+                                materials::Color::Black => "White",
+                            }
+                        );
+                        app_exit_events.send(AppExit);
+                    }
+
                     let new_piece_option = pieces_query
                         .iter()
                         .filter(|(_, p)| p.x == square.x && p.y == square.y)
                         .nth(0);
                     let mut new_entity: Option<Entity> = None;
+                    let mut new_piece: Option<&pieces::Piece> = None;
 
                     match new_piece_option {
                         // Square  hold piece
-                        Some((e, _)) => {
+                        Some((e, p)) => {
                             new_entity = Some(e);
+                            new_piece = Some(p);
                         }
 
                         // Square doesn't hold piece
@@ -115,17 +153,23 @@ fn select_square(
                         if old_piece.is_move_valid(square, &piece_vec) {
                             old_piece.move_to_square(square);
 
+                            turn.0 = match turn.0 {
+                                materials::Color::White => materials::Color::Black,
+                                materials::Color::Black => materials::Color::White,
+                            };
+
+                            selected_piece.entity = None;
+                            selected_square.entity = None;
+
                             if new_entity != None {
                                 commands.entity(new_entity.unwrap()).despawn();
                             }
 
                             return;
-                        } else {
-                            info!("move is not valid!");
                         }
                     }
 
-                    if new_entity != None {
+                    if new_entity != None && new_piece.unwrap().color == turn.0 {
                         selected_piece.entity = new_entity;
                     }
                 }
@@ -160,7 +204,8 @@ pub struct BoardPlugin;
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SelectedSquare>()
-            .init_resource::<pieces::SelectedPiece>()
+            .init_resource::<SelectedPiece>()
+            .init_resource::<PlayerTurn>()
             .add_startup_system(create_board.system())
             .add_system(select_square.system())
             .add_system(highlight_square.system())

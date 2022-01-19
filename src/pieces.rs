@@ -5,15 +5,6 @@ use crate::board;
 use crate::materials;
 
 // ---
-// Entities
-// ---
-
-#[derive(Default)]
-pub struct SelectedPiece {
-    pub entity: Option<Entity>,
-}
-
-// ---
 // Components
 // ---
 
@@ -137,6 +128,7 @@ impl Piece {
     }
 }
 
+struct PieceAnimationTimer(Timer);
 // ---
 // Game Logic
 // ---
@@ -215,7 +207,15 @@ fn spawn_cp(
     commands.spawn_bundle(bundle).insert(piece);
 }
 
-fn move_pieces(time: Res<Time>, mut query: Query<(Entity, &Piece, &mut Transform)>) {
+fn move_pieces(
+    time: Res<Time>,
+    mut timer: ResMut<PieceAnimationTimer>,
+    mut query: Query<(Entity, &Piece, &mut Transform)>,
+) {
+    if !timer.0.tick(time.delta()).just_finished() {
+        // return;
+    }
+
     for (_, piece, mut transform) in query.iter_mut() {
         let direction = piece.translation() - transform.translation;
         let delta = direction.normalize() * time.delta_seconds();
@@ -227,7 +227,7 @@ fn move_pieces(time: Res<Time>, mut query: Query<(Entity, &Piece, &mut Transform
 }
 
 fn highlight_piece(
-    selected_piece: Res<SelectedPiece>,
+    selected_piece: Res<board::SelectedPiece>,
     square_materials: Res<materials::Materials>,
     mut query: Query<(Entity, &Piece, &mut Handle<StandardMaterial>)>,
 ) {
@@ -249,7 +249,8 @@ fn highlight_piece(
 pub struct PiecesPlugin;
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(create_pieces.system())
+        app.insert_resource(PieceAnimationTimer(Timer::from_seconds(1.0, true)))
+            .add_startup_system(create_pieces.system())
             .add_system(highlight_piece.system())
             .add_system(move_pieces.system());
     }
