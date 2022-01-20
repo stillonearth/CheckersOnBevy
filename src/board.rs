@@ -240,6 +240,8 @@ fn select_piece(
     if op.is_move_valid(square, &pieces) {
         op.move_to_square(square);
 
+        commands.entity(_old_entity.unwrap()).insert(op);
+
         selected_piece.deselect();
         selected_square.deselect();
 
