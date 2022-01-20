@@ -14,7 +14,7 @@ pub enum PieceType {
     // King,
 }
 
-#[derive(Component, Debug, Copy, Clone)]
+#[derive(Component, Debug, Copy, Clone, PartialEq)]
 pub struct Piece {
     pub color: materials::Color,
     pub piece_type: PieceType,
@@ -207,15 +207,7 @@ fn spawn_cp(
     commands.spawn_bundle(bundle).insert(piece);
 }
 
-fn move_pieces(
-    time: Res<Time>,
-    mut timer: ResMut<PieceAnimationTimer>,
-    mut query: Query<(Entity, &Piece, &mut Transform)>,
-) {
-    if !timer.0.tick(time.delta()).just_finished() {
-        // return;
-    }
-
+fn move_pieces(time: Res<Time>, mut query: Query<(Entity, &Piece, &mut Transform)>) {
     for (_, piece, mut transform) in query.iter_mut() {
         let direction = piece.translation() - transform.translation;
         let delta = direction.normalize() * time.delta_seconds();
@@ -249,8 +241,7 @@ fn highlight_piece(
 pub struct PiecesPlugin;
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PieceAnimationTimer(Timer::from_seconds(1.0, true)))
-            .add_startup_system(create_pieces.system())
+        app.add_startup_system(create_pieces.system())
             .add_system(highlight_piece.system())
             .add_system(move_pieces.system());
     }
