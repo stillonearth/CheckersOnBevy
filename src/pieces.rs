@@ -1,8 +1,15 @@
 use bevy::pbr::*;
 use bevy::prelude::*;
+use bevy::utils::Duration;
+use bevy_tweening::*;
 
 use crate::board;
 use crate::materials;
+
+// ---
+// Events
+// ---
+pub struct EventPieceMove(pub Entity);
 
 // ---
 // Components
@@ -23,7 +30,7 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn move_to_square(&mut self, square: &board::Square) {
+    pub fn move_to_square(&mut self, square: board::Square) {
         self.x = square.x;
         self.y = square.y;
     }
@@ -52,7 +59,7 @@ impl Piece {
         return transform;
     }
 
-    pub fn is_move_valid(&self, new_square: &board::Square, pieces: &Vec<Piece>) -> bool {
+    pub fn is_move_valid(&self, new_square: board::Square, pieces: &Vec<Piece>) -> bool {
         // If there's a piece of the same color in the same square, it can't move
         if color_of_square((new_square.x, new_square.y), &pieces) == Some(self.color) {
             return false;
@@ -128,7 +135,6 @@ impl Piece {
     }
 }
 
-struct PieceAnimationTimer(Timer);
 // ---
 // Game Logic
 // ---
@@ -181,8 +187,6 @@ pub fn create_pieces(
     }
 }
 
-// fn cp_pi
-
 fn spawn_cp(
     commands: &mut Commands,
     material: Handle<StandardMaterial>,
@@ -207,14 +211,27 @@ fn spawn_cp(
     commands.spawn_bundle(bundle).insert(piece);
 }
 
-fn move_pieces(time: Res<Time>, mut query: Query<(Entity, &Piece, &mut Transform)>) {
-    for (_, piece, mut transform) in query.iter_mut() {
-        let direction = piece.translation() - transform.translation;
-        let delta = direction.normalize() * time.delta_seconds();
-
-        if direction.length() > 0.05 {
-            transform.translation += delta;
-        }
+fn event_piece_moved(
+    mut commands: Commands,
+    mut picking_events: EventReader<EventPieceMove>,
+    mut query: Query<(Entity, &Piece, &Transform)>,
+) {
+    for event in picking_events.iter() {
+        let (entity, piece, transform) = query.get_mut(event.0).unwrap();
+        // result.unwrap()
+        commands.entity(entity).insert(Animator::new(
+            // Use a quadratic easing on both endpoints
+            EaseFunction::QuadraticInOut,
+            // Loop animation back and forth over 1 second, with a 0.5 second
+            // pause after each cycle (start -> end -> start).
+            TweeningType::Once {
+                duration: Duration::from_secs(1),
+            },
+            TransformPositionLens {
+                start: transform.translation,
+                end: piece.translation(),
+            },
+        ));
     }
 }
 
@@ -242,7 +259,8 @@ pub struct PiecesPlugin;
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(create_pieces.system())
+            .add_plugin(TweeningPlugin)
             .add_system(highlight_piece.system())
-            .add_system(move_pieces.system());
+            .add_system(event_piece_moved.system());
     }
 }

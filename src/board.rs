@@ -6,6 +6,7 @@ use bevy_mod_picking::*;
 
 use crate::materials;
 use crate::pieces;
+use anyhow::Result;
 
 // Entities
 
@@ -55,7 +56,7 @@ struct Taken;
 // Components
 // ---
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug)]
 pub struct Square {
     pub x: u8,
     pub y: u8,
@@ -124,7 +125,7 @@ fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Op
 }
 
 fn find_piece_by_square(
-    square: &Square,
+    square: Square,
     pieces_query: &Query<(Entity, &pieces::Piece)>,
 ) -> (Option<Entity>, Option<pieces::Piece>) {
     match pieces_query
@@ -151,6 +152,29 @@ fn find_piece_by_entity(
     }
 
     match pieces_query
+        .iter()
+        .filter(|(e, _)| e == &entity.unwrap())
+        .nth(0)
+    {
+        // Square  hold piece
+        Some((e, p)) => {
+            return (Some(e), Some(*p));
+        }
+
+        // Square doesn't hold piece
+        _ => return (None, None),
+    };
+}
+
+fn find_square_by_entity(
+    entity: Option<Entity>,
+    square_query: &Query<(Entity, &Square)>,
+) -> (Option<Entity>, Option<Square>) {
+    if entity == None {
+        return (None, None);
+    }
+
+    match square_query
         .iter()
         .filter(|(e, _)| e == &entity.unwrap())
         .nth(0)
@@ -194,35 +218,26 @@ fn check_game_termination(
     }
 }
 
-fn run_if_square_is_selected(selected_square: Res<SelectedSquare>) -> ShouldRun {
-    if selected_square.entity != None {
-        return ShouldRun::Yes;
-    };
-
-    return ShouldRun::No;
-}
-
-fn run_if_piece_is_selected(selected_piece: Res<SelectedPiece>) -> ShouldRun {
-    if selected_piece.entity != None {
-        return ShouldRun::Yes;
-    };
-
-    return ShouldRun::No;
-}
-
 fn select_piece(
     mut commands: Commands,
     mut turn: ResMut<PlayerTurn>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
+    mut event_piece_move: EventWriter<pieces::EventPieceMove>,
     square_query: Query<(Entity, &Square)>,
     pieces_query: Query<(Entity, &pieces::Piece)>,
 ) {
-    let square = square_query.get(selected_square.entity.unwrap()).unwrap().1;
+    let (_, square) = find_square_by_entity(selected_square.entity, &square_query);
+
     let pieces: Vec<pieces::Piece> = pieces_query.iter().map(|(_, piece)| *piece).collect();
 
+    if square.is_none() {
+        return;
+    }
+    let square = square.unwrap();
+
     let (new_entity, new_piece) = find_piece_by_square(square, &pieces_query);
-    let (_old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, &pieces_query);
+    let (old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, &pieces_query);
 
     // Nothing has been selected before
     if old_piece == None && new_entity != None && new_piece.unwrap().color == turn.0 {
@@ -240,7 +255,10 @@ fn select_piece(
     if op.is_move_valid(square, &pieces) {
         op.move_to_square(square);
 
-        commands.entity(_old_entity.unwrap()).insert(op);
+        // this updates component
+        let e = selected_piece.entity.unwrap();
+        commands.entity(e).insert(op);
+        event_piece_move.send(pieces::EventPieceMove(e));
 
         selected_piece.deselect();
         selected_square.deselect();
@@ -265,26 +283,7 @@ fn event_square_selected(
     mut selected_square: ResMut<SelectedSquare>,
     picking_events: EventReader<PickingEvent>,
 ) {
-    let chosen_square = filter_just_selected_event(picking_events);
-    if chosen_square != None {
-        selected_square.entity = chosen_square;
-    }
-}
-
-fn highlight_square(
-    selected_square: Res<SelectedSquare>,
-    square_materials: Res<materials::Materials>,
-    mut query: Query<(Entity, &Square, &mut Handle<StandardMaterial>)>,
-) {
-    for (entity, square, mut material) in query.iter_mut() {
-        if Some(entity) == selected_square.entity {
-            *material = square_materials.selected_color.clone();
-        } else if square.color() == materials::Color::White {
-            *material = square_materials.white_color.clone();
-        } else {
-            *material = square_materials.black_color.clone();
-        }
-    }
+    selected_square.entity = filter_just_selected_event(picking_events);
 }
 
 // ---
@@ -297,21 +296,15 @@ impl Plugin for BoardPlugin {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
             .init_resource::<PlayerTurn>()
-            .add_startup_system(create_board.system())
-            .add_system(event_square_selected.label("event_square_selected"))
-            .add_system(
-                select_piece
-                    .label("select_piece")
-                    .with_run_criteria(run_if_square_is_selected)
-                    .after("event_square_selected"),
-            )
-            .add_system(
-                despawn_taken_pieces
-                    .label("despawn_taken_pieces")
-                    .after("select_piece"),
-            )
-            .add_system(check_game_termination.system())
-            .add_system(highlight_square.system())
+            // Initializtion
+            .add_startup_system(create_board)
+            // Game Logic logic
+            .add_system(event_square_selected)
+            .add_system(select_piece)
+            .add_system(despawn_taken_pieces)
+            .add_system(check_game_termination)
+            // Events
+            .add_event::<pieces::EventPieceMove>()
             .add_plugin(pieces::PiecesPlugin);
     }
 }

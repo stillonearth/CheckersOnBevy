@@ -5,6 +5,8 @@ version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
+anyhow = {version = "1.0", default-features = false}
 bevy = {version = "0.6.0"}
 bevy-inspector-egui = {version = "0.7.2"}
-bevy_mod_picking  = {git="https://github.com/aevyrie/bevy_mod_picking"}
+bevy_mod_picking = {git = "https://github.com/aevyrie/bevy_mod_picking"}
+bevy_tweening = {version = "0.2.0"}

@@ -717,6 +717,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_tweening"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd4d3587fdbeb755ef30b99f0877c52c0a467514cefbb38c4d95ccb49e74275a"
+dependencies = [
+ "bevy",
+ "interpolation",
+]
+
+[[package]]
 name = "bevy_ui"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -937,9 +947,11 @@ checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 name = "checkers"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bevy-inspector-egui",
  "bevy_mod_picking",
+ "bevy_tweening",
 ]
 
 [[package]]
@@ -1817,6 +1829,12 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
+
+[[package]]
+name = "interpolation"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3b7357d2bbc5ee92f8e899ab645233e43d21407573cceb37fed8bc3dede2c02"
 
 [[package]]
 name = "io-kit-sys"

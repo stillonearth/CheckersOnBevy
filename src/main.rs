@@ -29,8 +29,8 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
-        .add_plugin(HighlightablePickingPlugin)
-        .add_plugin(WorldInspectorPlugin::new())
+        // .add_plugin(HighlightablePickingPlugin)
+        // .add_plugin(WorldInspectorPlugin::new())
         // Application Plugins
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin)
@@ -59,7 +59,7 @@ fn setup(mut commands: Commands) {
         Vec3::new(-7.0, 20.0, 4.0),
     ));
 
-    camera_transform.scale.z = 2.0;
+    camera_transform.scale.z = 1.5;
 
     // Camera
     commands
