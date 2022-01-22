@@ -289,7 +289,9 @@ fn select_piece(
     // Another piece currently selected
     match op.is_move_valid(square, &pieces) {
         pieces::MoveType::Invalid => {
-            selected_piece.entity = new_entity;
+            if new_piece != None && new_piece.unwrap().color == turn.color {
+                selected_piece.entity = new_entity;
+            }
         }
         pieces::MoveType::JumpOver => {
             op.move_to_square(square);

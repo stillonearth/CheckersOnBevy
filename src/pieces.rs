@@ -97,10 +97,6 @@ impl Piece {
             let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
                 == (self.x as i8 - new_square.x as i8).abs()
                 && (self.x as i8 - new_square.x as i8).abs() == 2;
-            info!(
-                "horizontal_move {}, vertical_move {}, diagonal_move {}",
-                horizontal_move, vertical_move, diagonal_move
-            );
             if horizontal_move || vertical_move || diagonal_move {
                 return MoveType::JumpOver;
             } else {

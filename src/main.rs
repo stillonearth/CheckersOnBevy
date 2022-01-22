@@ -52,7 +52,7 @@ fn setup(mut commands: Commands) {
             shadows_enabled: false,
             ..Default::default()
         },
-        transform: Transform::from_xyz(7.5, 8.0, 3.5),
+        transform: Transform::from_xyz(0.0, 8.0, 3.5),
         ..Default::default()
     });
 
