@@ -3,12 +3,14 @@ use bevy::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 
+mod animations;
 mod board;
-mod pieces;
-use board::*;
 mod materials;
-use materials::*;
+mod pieces;
 mod ui;
+
+use board::*;
+use materials::*;
 use ui::*;
 
 fn main() {
@@ -30,7 +32,7 @@ fn main() {
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         // .add_plugin(HighlightablePickingPlugin)
-        // .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(WorldInspectorPlugin::new())
         // Application Plugins
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin)
@@ -46,7 +48,7 @@ fn setup(mut commands: Commands) {
     // Light
     commands.spawn_bundle(PointLightBundle {
         point_light: PointLight {
-            intensity: 3000.0,
+            intensity: 7000.0,
             shadows_enabled: false,
             ..Default::default()
         },
@@ -56,7 +58,7 @@ fn setup(mut commands: Commands) {
 
     let mut camera_transform = Transform::from_matrix(Mat4::from_rotation_translation(
         Quat::from_xyzw(-0.3, -0.5, -0.3, 0.5).normalize(),
-        Vec3::new(-7.0, 20.0, 4.0),
+        Vec3::new(-7.5, 20.0, 3.5),
     ));
 
     camera_transform.scale.z = 1.5;

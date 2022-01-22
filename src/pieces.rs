@@ -3,8 +3,10 @@ use bevy::prelude::*;
 use bevy::utils::Duration;
 use bevy_tweening::*;
 
+use crate::animations;
 use crate::board;
 use crate::materials;
+use std::vec::*;
 
 // ---
 // Events
@@ -15,18 +17,17 @@ pub struct EventPieceMove(pub Entity);
 // Components
 // ---
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum PieceType {
-    Man,
-    // King,
-}
-
 #[derive(Component, Debug, Copy, Clone, PartialEq)]
 pub struct Piece {
     pub color: materials::Color,
-    pub piece_type: PieceType,
     pub y: u8,
     pub x: u8,
+}
+
+pub enum MoveType {
+    Invalid,
+    JumpOver,
+    Regular,
 }
 
 impl Piece {
@@ -36,7 +37,7 @@ impl Piece {
     }
 
     fn translation(&self) -> Vec3 {
-        let v1 = Vec3::new(self.x as f32, 0.2, self.y as f32);
+        let v1 = Vec3::new(self.x as f32, 0.1, self.y as f32);
         return v1;
     }
 
@@ -59,29 +60,59 @@ impl Piece {
         return transform;
     }
 
-    pub fn is_move_valid(&self, new_square: board::Square, pieces: &Vec<Piece>) -> bool {
-        // If there's a piece of the same color in the same square, it can't move
-        if color_of_square((new_square.x, new_square.y), &pieces) == Some(self.color) {
-            return false;
+    pub fn is_move_valid(&self, new_square: board::Square, pieces: &Vec<Piece>) -> MoveType {
+        let is_square_occopied = pieces
+            .iter()
+            .filter(|p| p.x == new_square.x && p.y == new_square.y)
+            .count()
+            == 1;
+
+        if is_square_occopied {
+            return MoveType::Invalid;
         }
 
-        match self.piece_type {
-            PieceType::Man => {
-                let horizontal_move =
-                    (self.x as i8 - new_square.x as i8).abs() > 0 && (self.y == new_square.y);
-                let vertical_move =
-                    (self.y as i8 - new_square.y as i8).abs() > 0 && (self.x == new_square.x);
-                let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
-                    == (self.x as i8 - new_square.x as i8).abs();
-                let path_nonblocking =
-                    self.is_path_empty((self.x, self.y), (new_square.x, new_square.y), pieces);
+        let collision_count =
+            self.is_path_empty((self.x, self.y), (new_square.x, new_square.y), pieces);
 
-                return (horizontal_move || vertical_move || diagonal_move) && path_nonblocking;
+        // move to empty square
+        if collision_count == 0 {
+            let horizontal_move =
+                (self.x as i8 - new_square.x as i8).abs() == 1 && (self.y == new_square.y);
+            let vertical_move =
+                (self.y as i8 - new_square.y as i8).abs() == 1 && (self.x == new_square.x);
+            let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
+                == (self.x as i8 - new_square.x as i8).abs()
+                && (self.x as i8 - new_square.x as i8).abs() == 1;
+
+            if horizontal_move || vertical_move || diagonal_move {
+                return MoveType::Regular;
+            } else {
+                return MoveType::Invalid;
             }
+        } else if collision_count == 1 {
+            let horizontal_move =
+                (self.x as i8 - new_square.x as i8).abs() == 2 && (self.y == new_square.y);
+            let vertical_move =
+                (self.y as i8 - new_square.y as i8).abs() == 2 && (self.x == new_square.x);
+            let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
+                == (self.x as i8 - new_square.x as i8).abs()
+                && (self.x as i8 - new_square.x as i8).abs() == 2;
+            info!(
+                "horizontal_move {}, vertical_move {}, diagonal_move {}",
+                horizontal_move, vertical_move, diagonal_move
+            );
+            if horizontal_move || vertical_move || diagonal_move {
+                return MoveType::JumpOver;
+            } else {
+                return MoveType::Invalid;
+            }
+        } else {
+            return MoveType::Invalid;
         }
     }
 
-    pub fn is_path_empty(&self, begin: (u8, u8), end: (u8, u8), pieces: &Vec<Piece>) -> bool {
+    pub fn is_path_empty(&self, begin: (u8, u8), end: (u8, u8), pieces: &Vec<Piece>) -> u8 {
+        let mut collision_count: u8 = 0;
         // Same column
         if begin.0 == end.0 {
             for piece in pieces {
@@ -89,7 +120,7 @@ impl Piece {
                     && ((piece.y > begin.1 && piece.y < end.1)
                         || (piece.y > end.1 && piece.y < begin.1))
                 {
-                    return false;
+                    collision_count += 1;
                 }
             }
         }
@@ -100,7 +131,7 @@ impl Piece {
                     && ((piece.x > begin.0 && piece.x < end.0)
                         || (piece.x > end.0 && piece.x < begin.0))
                 {
-                    return false;
+                    collision_count += 1;
                 }
             }
         }
@@ -126,12 +157,12 @@ impl Piece {
                 };
 
                 if color_of_square(pos, pieces).is_some() {
-                    return false;
+                    collision_count += 1;
                 }
             }
         }
 
-        true
+        return collision_count;
     }
 }
 
@@ -149,6 +180,33 @@ pub fn color_of_square(pos: (u8, u8), pieces: &Vec<Piece>) -> Option<materials::
     None
 }
 
+pub type Position = (u8, u8);
+pub fn white_start_positions() -> Vec<Position> {
+    let mut positions: Vec<Position> = Vec::new();
+
+    for i in 0..3 {
+        for j in 5..8 {
+            let p: Position = (i as u8, j as u8);
+            positions.push(p);
+        }
+    }
+
+    return positions;
+}
+
+pub fn black_start_positions() -> Vec<Position> {
+    let mut positions: Vec<Position> = Vec::new();
+
+    for i in 5..8 {
+        for j in 0..3 {
+            let p: Position = (i as u8, j as u8);
+            positions.push(p);
+        }
+    }
+
+    return positions;
+}
+
 // ---
 // Systems
 // ---
@@ -161,29 +219,25 @@ pub fn create_pieces(
     let cp_handle = asset_server.load("microsoft.glb#Mesh0/Primitive0");
 
     // spawn whites
-    for i in 0..3 {
-        for j in 5..8 {
-            spawn_cp(
-                &mut commands,
-                square_materials.white_color.clone().clone(),
-                cp_handle.clone(),
-                (i, j),
-                materials::Color::White,
-            );
-        }
+    for position in white_start_positions() {
+        spawn_cp(
+            &mut commands,
+            square_materials.white_color.clone(),
+            cp_handle.clone(),
+            position,
+            materials::Color::White,
+        );
     }
 
     // spawn blacks
-    for i in 5..8 {
-        for j in 0..3 {
-            spawn_cp(
-                &mut commands,
-                square_materials.black_color.clone().clone(),
-                cp_handle.clone(),
-                (i, j),
-                materials::Color::Black,
-            );
-        }
+    for position in black_start_positions() {
+        spawn_cp(
+            &mut commands,
+            square_materials.black_color.clone(),
+            cp_handle.clone(),
+            position,
+            materials::Color::Black,
+        );
     }
 }
 
@@ -191,12 +245,11 @@ fn spawn_cp(
     commands: &mut Commands,
     material: Handle<StandardMaterial>,
     mesh: Handle<Mesh>,
-    position: (u8, u8),
+    position: Position,
     piece_color: materials::Color,
 ) {
     let piece = Piece {
         color: piece_color,
-        piece_type: PieceType::Man,
         x: position.0,
         y: position.1,
     };
@@ -218,16 +271,13 @@ fn event_piece_moved(
 ) {
     for event in picking_events.iter() {
         let (entity, piece, transform) = query.get_mut(event.0).unwrap();
-        // result.unwrap()
+
         commands.entity(entity).insert(Animator::new(
-            // Use a quadratic easing on both endpoints
             EaseFunction::QuadraticInOut,
-            // Loop animation back and forth over 1 second, with a 0.5 second
-            // pause after each cycle (start -> end -> start).
             TweeningType::Once {
-                duration: Duration::from_secs(1),
+                duration: Duration::from_millis(800),
             },
-            TransformPositionLens {
+            animations::TransformPositionWithYJumpLens {
                 start: transform.translation,
                 end: piece.translation(),
             },
@@ -259,6 +309,7 @@ pub struct PiecesPlugin;
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(create_pieces.system())
+            // .init_resource::<AsyncComputeTaskPool>()
             .add_plugin(TweeningPlugin)
             .add_system(highlight_piece.system())
             .add_system(event_piece_moved.system());
