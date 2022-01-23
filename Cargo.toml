@@ -10,6 +10,4 @@ bevy = {version = "0.6.0"}
 bevy-inspector-egui = {version = "0.7.2"}
 bevy_mod_picking = {git = "https://github.com/aevyrie/bevy_mod_picking"}
 bevy_tweening = {version = "0.2.0"}
-tokio = { version = "1.15.0", features = ["full"] }
-futures-lite = "1.12.0"
-rand="0.8.4"
+ndarray = {version = "0.15.4"}

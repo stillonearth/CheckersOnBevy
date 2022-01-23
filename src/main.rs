@@ -5,6 +5,7 @@ use bevy_mod_picking::*;
 
 mod animations;
 mod board;
+mod game;
 mod materials;
 mod pieces;
 mod ui;
@@ -13,10 +14,26 @@ use board::*;
 use materials::*;
 use ui::*;
 
+const DEBUG: bool = false;
+
 fn main() {
-    App::new()
-        // Set antialiasing to use 4 samples
-        .insert_resource(Msaa { samples: 4 })
+    let game = game::Game {
+        ..Default::default()
+    };
+    let mut app = create_bevy_app(game);
+    app.run();
+}
+
+// ---
+// Bevy Application
+// ---
+
+fn create_bevy_app(game: game::Game) -> App {
+    let mut app = App::new();
+
+    // let state = &cg.state;
+
+    app.insert_resource(Msaa { samples: 4 })
         // Set WindowDescriptor Resource to change title and size
         .insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
         .insert_resource(WindowDescriptor {
@@ -25,24 +42,27 @@ fn main() {
             height: 800.,
             ..Default::default()
         })
+        // Resources
+        .insert_resource(game)
+        // .insert_resource(state.turn)
         // Entry Point
         .add_startup_system(setup.system())
         // External Plugins
         .add_plugins(DefaultPlugins)
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
-        // .add_plugin(HighlightablePickingPlugin)
-        .add_plugin(WorldInspectorPlugin::new())
+        // Debug plugins
         // Application Plugins
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin)
-        .add_plugin(UIPlugin)
-        .run();
-}
+        .add_plugin(UIPlugin);
 
-// ---
-// Systems
-// ---
+    if DEBUG {
+        app.add_plugin(WorldInspectorPlugin::new());
+    }
+
+    return app;
+}
 
 fn setup(mut commands: Commands) {
     // Light

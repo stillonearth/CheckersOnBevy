@@ -1,12 +1,6 @@
 use bevy::pbr::*;
 use bevy::prelude::*;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Color {
-    White,
-    Black,
-}
-
 pub struct Materials {
     pub selected_color: Handle<StandardMaterial>,
     pub black_color: Handle<StandardMaterial>,

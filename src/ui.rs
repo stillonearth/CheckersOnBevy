@@ -1,4 +1,4 @@
-use crate::{board::*, materials};
+use crate::{board::*, game};
 use bevy::prelude::*;
 
 // Component to mark the Text entity
@@ -83,7 +83,7 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn button_system(
-    mut turn: ResMut<PlayerTurn>,
+    mut game: ResMut<game::Game>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     mut interaction_query: Query<
@@ -97,7 +97,7 @@ fn button_system(
                 *color = PRESSED_BUTTON.into();
                 selected_square.entity = None;
                 selected_piece.entity = None;
-                turn.change();
+                game.state.turn.change();
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
@@ -110,19 +110,19 @@ fn button_system(
 }
 
 /// Update text with the correct turn
-fn next_move_text_update(turn: ResMut<PlayerTurn>, mut query: Query<(&mut Text, &NextMoveText)>) {
-    if turn.is_changed() {
+fn next_move_text_update(game: ResMut<game::Game>, mut query: Query<(&mut Text, &NextMoveText)>) {
+    if game.is_changed() {
         return;
     }
 
     for (mut text, _tag) in query.iter_mut() {
         let str = format!(
             "Move: {}   Turn: {}",
-            match turn.color {
-                materials::Color::White => "White",
-                materials::Color::Black => "Black",
+            match game.state.turn.color {
+                game::Color::White => "White",
+                game::Color::Black => "Black",
             },
-            turn.turn_count
+            game.state.turn.turn_count
         )
         .to_string();
         text.sections[0].value = str;

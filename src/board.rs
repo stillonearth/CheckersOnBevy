@@ -3,8 +3,9 @@ use bevy::pbr::*;
 use bevy::{app::AppExit, prelude::*};
 use bevy_mod_picking::*;
 
+use crate::game;
 use crate::materials;
-use crate::pieces::{self, Piece};
+use crate::pieces;
 
 // ---
 // Resources
@@ -32,52 +33,6 @@ impl SelectedPiece {
     }
 }
 
-pub struct PlayerTurn {
-    pub color: materials::Color,
-    pub turn_count: u8,
-}
-
-impl Default for PlayerTurn {
-    fn default() -> Self {
-        PlayerTurn {
-            color: materials::Color::White,
-            turn_count: 0,
-        }
-    }
-}
-
-impl PlayerTurn {
-    pub fn change(&mut self) {
-        self.color = match self.color {
-            materials::Color::White => materials::Color::Black,
-            materials::Color::Black => materials::Color::White,
-        };
-        self.turn_count += 1;
-    }
-}
-
-// ---
-// Components
-// ---
-
-#[derive(Component)]
-struct Taken;
-
-#[derive(Component, Copy, Clone, Debug)]
-pub struct Square {
-    pub x: u8,
-    pub y: u8,
-}
-impl Square {
-    fn color(&self) -> materials::Color {
-        if (self.x + self.y + 1) % 2 == 0 {
-            materials::Color::White
-        } else {
-            materials::Color::Black
-        }
-    }
-}
-
 // ---
 // Helpers
 // ---
@@ -98,9 +53,9 @@ fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Op
 }
 
 fn find_piece_by_square(
-    square: Square,
-    pieces_query: &Query<(Entity, &pieces::Piece)>,
-) -> (Option<Entity>, Option<pieces::Piece>) {
+    square: game::Square,
+    pieces_query: &Query<(Entity, &game::Piece)>,
+) -> (Option<Entity>, Option<game::Piece>) {
     match pieces_query
         .iter()
         .filter(|(_, p)| p.x == square.x && p.y == square.y)
@@ -118,8 +73,8 @@ fn find_piece_by_square(
 
 fn find_piece_by_entity(
     entity: Option<Entity>,
-    pieces_query: &Query<(Entity, &pieces::Piece)>,
-) -> (Option<Entity>, Option<pieces::Piece>) {
+    pieces_query: &Query<(Entity, &game::Piece)>,
+) -> (Option<Entity>, Option<game::Piece>) {
     if entity == None {
         return (None, None);
     }
@@ -141,8 +96,8 @@ fn find_piece_by_entity(
 
 fn find_square_by_entity(
     entity: Option<Entity>,
-    square_query: &Query<(Entity, &Square)>,
-) -> (Option<Entity>, Option<Square>) {
+    square_query: &Query<(Entity, &game::Square)>,
+) -> (Option<Entity>, Option<game::Square>) {
     if entity == None {
         return (None, None);
     }
@@ -177,8 +132,8 @@ pub fn create_board(
     // Spawn 64 squares
     for i in 0..8 {
         for j in 0..8 {
-            let square = Square { x: i, y: j };
-            let material = if square.color() == materials::Color::White {
+            let square = game::Square { x: i, y: j };
+            let material = if square.color() == game::Color::White {
                 square_materials.white_color.clone()
             } else {
                 square_materials.black_color.clone()
@@ -199,71 +154,20 @@ pub fn create_board(
     }
 }
 
-fn check_game_termination(
-    turn: Res<PlayerTurn>,
-    mut app_exit_events: ResMut<Events<AppExit>>,
-    pieces_query: Query<(Entity, &mut pieces::Piece)>,
-) {
-    let pieces: Vec<pieces::Piece> = pieces_query.iter().map(|(_, piece)| *piece).collect();
-
-    let piece_in_set = |p: &&Piece, collection: Vec<pieces::Position>| -> bool {
-        let cnt = collection
-            .iter()
-            .filter(|e| e.0 == p.x && e.1 == p.y)
-            .count();
-        return cnt > 0;
-    };
-
-    // Game end condition check
-    let number_of_whites = pieces
-        .iter()
-        .filter(|p| {
-            (p.color == materials::Color::White) && piece_in_set(p, pieces::black_start_positions())
-        })
-        .count();
-
-    let number_of_blacks = pieces
-        .iter()
-        .filter(|p| {
-            (p.color == materials::Color::Black) && piece_in_set(p, pieces::white_start_positions())
-        })
-        .count();
-
-    if number_of_whites == 9 || number_of_blacks == 9 {
-        println!(
-            "{} won! Thanks for playing!",
-            match turn.color {
-                materials::Color::White => "Black",
-                materials::Color::Black => "White",
-            }
-        );
-        app_exit_events.send(AppExit);
-    }
-
-    if turn.turn_count > 40 {
-        println!(
-            "{} won! Thanks for playing!",
-            match number_of_whites > number_of_blacks {
-                true => "White",
-                false => "Black",
-            }
-        );
-        app_exit_events.send(AppExit);
-    }
-}
-
-fn select_piece(
+fn click_square(
     mut commands: Commands,
-    mut turn: ResMut<PlayerTurn>,
+    // game logic
+    mut game: ResMut<game::Game>,
+    // bevy game entities
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
+    // events
     mut event_piece_move: EventWriter<pieces::EventPieceMove>,
-    square_query: Query<(Entity, &Square)>,
-    pieces_query: Query<(Entity, &pieces::Piece)>,
+    // queries
+    square_query: Query<(Entity, &game::Square)>,
+    pieces_query: Query<(Entity, &game::Piece)>,
 ) {
     let (_, square) = find_square_by_entity(selected_square.entity, &square_query);
-
-    let pieces: Vec<pieces::Piece> = pieces_query.iter().map(|(_, piece)| *piece).collect();
 
     if square.is_none() {
         return;
@@ -274,7 +178,8 @@ fn select_piece(
     let (_old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, &pieces_query);
 
     // Nothing has been selected before
-    if old_piece == None && new_entity != None && new_piece.unwrap().color == turn.color {
+    if old_piece == None && new_entity != None && new_piece.unwrap().color == game.state.turn.color
+    {
         selected_piece.entity = new_entity;
         return;
     }
@@ -283,36 +188,28 @@ fn select_piece(
         return;
     }
 
-    let mut op = old_piece.unwrap();
+    let piece = &mut old_piece.unwrap();
     let e = selected_piece.entity.unwrap();
 
-    // Another piece currently selected
-    match op.is_move_valid(square, &pieces) {
-        pieces::MoveType::Invalid => {
-            if new_piece != None && new_piece.unwrap().color == turn.color {
+    let (move_type, _, _) = game.step(piece, square);
+
+    // Check whether game move was valid
+    match move_type {
+        game::MoveType::Invalid => {
+            if new_piece != None && new_piece.unwrap().color == game.state.turn.color {
                 selected_piece.entity = new_entity;
             }
         }
-        pieces::MoveType::JumpOver => {
-            op.move_to_square(square);
-
-            commands.entity(e).insert(op);
+        game::MoveType::JumpOver => {
+            commands.entity(e).insert(*piece);
             event_piece_move.send(pieces::EventPieceMove(e));
         }
-        pieces::MoveType::Regular => {
-            op.move_to_square(square);
-            commands.entity(e).insert(op);
-            event_piece_move.send(pieces::EventPieceMove(e));
+        game::MoveType::Regular => {
             selected_piece.deselect();
             selected_square.deselect();
-            turn.change();
+            commands.entity(e).insert(*piece);
+            event_piece_move.send(pieces::EventPieceMove(e));
         }
-    }
-}
-
-fn despawn_taken_pieces(mut commands: Commands, query: Query<(Entity, &Taken)>) {
-    for (entity, _taken) in query.iter() {
-        commands.entity(entity).despawn();
     }
 }
 
@@ -321,6 +218,24 @@ fn event_square_selected(
     picking_events: EventReader<PickingEvent>,
 ) {
     selected_square.entity = filter_just_selected_event(picking_events);
+}
+
+fn check_game_termination(game: Res<game::Game>, mut event_app_exit: ResMut<Events<AppExit>>) {
+    if !game.is_changed() {
+        return;
+    }
+    // Check whether game has ended
+    match game.check_termination() {
+        game::GameTermination::Black => {
+            println!("Black won! Thanks for playing!");
+            event_app_exit.send(AppExit);
+        }
+        game::GameTermination::White => {
+            println!("White won! Thanks for playing!");
+            event_app_exit.send(AppExit);
+        }
+        _ => {}
+    }
 }
 
 // ---
@@ -332,23 +247,11 @@ impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
-            .init_resource::<PlayerTurn>()
-            // Initializtion
             .add_startup_system(create_board)
-            // Game Logic logic
             .add_system(event_square_selected)
-            .add_system(select_piece)
-            .add_system(despawn_taken_pieces)
+            .add_system(click_square)
             .add_system(check_game_termination)
-            // Events
             .add_event::<pieces::EventPieceMove>()
             .add_plugin(pieces::PiecesPlugin);
     }
 }
-
-// ---
-// TODOs
-// ---
-
-// Rust Generics
-// Bevy ECS pattern
