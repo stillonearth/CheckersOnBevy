@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 
+#[derive(Debug)]
 pub enum GameTermination {
     White,
     Black,
     Unterminated,
 }
 
+#[derive(Debug)]
 pub enum MoveType {
     Invalid,
     JumpOver,

@@ -31,8 +31,6 @@ fn main() {
 fn create_bevy_app(game: game::Game) -> App {
     let mut app = App::new();
 
-    // let state = &cg.state;
-
     app.insert_resource(Msaa { samples: 4 })
         // Set WindowDescriptor Resource to change title and size
         .insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
@@ -44,7 +42,6 @@ fn create_bevy_app(game: game::Game) -> App {
         })
         // Resources
         .insert_resource(game)
-        // .insert_resource(state.turn)
         // Entry Point
         .add_startup_system(setup.system())
         // External Plugins

@@ -54,7 +54,7 @@ fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Op
 
 fn find_piece_by_square(
     square: game::Square,
-    pieces_query: &Query<(Entity, &game::Piece)>,
+    pieces_query: &Query<(Entity, &mut game::Piece)>,
 ) -> (Option<Entity>, Option<game::Piece>) {
     match pieces_query
         .iter()
@@ -73,14 +73,14 @@ fn find_piece_by_square(
 
 fn find_piece_by_entity(
     entity: Option<Entity>,
-    pieces_query: &Query<(Entity, &game::Piece)>,
+    mut pieces_query: Query<(Entity, &mut game::Piece)>,
 ) -> (Option<Entity>, Option<game::Piece>) {
     if entity == None {
         return (None, None);
     }
 
     match pieces_query
-        .iter()
+        .iter_mut()
         .filter(|(e, _)| e == &entity.unwrap())
         .nth(0)
     {
@@ -165,20 +165,21 @@ fn click_square(
     mut event_piece_move: EventWriter<pieces::EventPieceMove>,
     // queries
     square_query: Query<(Entity, &game::Square)>,
-    pieces_query: Query<(Entity, &game::Piece)>,
+    pieces_query: Query<(Entity, &mut game::Piece)>,
 ) {
-    let (_, square) = find_square_by_entity(selected_square.entity, &square_query);
+    let (_, new_square) = find_square_by_entity(selected_square.entity, &square_query);
 
-    if square.is_none() {
+    if new_square.is_none() {
         return;
     }
-    let square = square.unwrap();
 
-    let (new_entity, new_piece) = find_piece_by_square(square, &pieces_query);
-    let (_old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, &pieces_query);
+    let (new_entity, new_piece) = find_piece_by_square(new_square.unwrap(), &pieces_query);
+    let (old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, pieces_query);
 
     // Nothing has been selected before
-    if old_piece == None && new_entity != None && new_piece.unwrap().color == game.state.turn.color
+    if selected_piece.entity == None
+        && new_entity != None
+        && new_piece.unwrap().color == game.state.turn.color
     {
         selected_piece.entity = new_entity;
         return;
@@ -188,12 +189,17 @@ fn click_square(
         return;
     }
 
-    let piece = &mut old_piece.unwrap();
-    let e = selected_piece.entity.unwrap();
+    let piece: &mut game::Piece = &mut old_piece.unwrap();
+    let entity = old_entity.unwrap();
 
-    let (move_type, _, _) = game.step(piece, square);
-
+    let (move_type, state, termination) = game.step(piece, new_square.unwrap());
     // Check whether game move was valid
+
+    info!(
+        "move_type: {:?}\tstate: {:?}\ttermination: {:?}",
+        move_type, state, termination
+    );
+
     match move_type {
         game::MoveType::Invalid => {
             if new_piece != None && new_piece.unwrap().color == game.state.turn.color {
@@ -201,14 +207,14 @@ fn click_square(
             }
         }
         game::MoveType::JumpOver => {
-            commands.entity(e).insert(*piece);
-            event_piece_move.send(pieces::EventPieceMove(e));
+            commands.entity(entity).insert(*piece);
+            event_piece_move.send(pieces::EventPieceMove(entity));
         }
         game::MoveType::Regular => {
             selected_piece.deselect();
             selected_square.deselect();
-            commands.entity(e).insert(*piece);
-            event_piece_move.send(pieces::EventPieceMove(e));
+            commands.entity(entity).insert(*piece);
+            event_piece_move.send(pieces::EventPieceMove(entity));
         }
     }
 }
