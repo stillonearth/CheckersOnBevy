@@ -83,7 +83,7 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn button_system(
-    mut game: ResMut<game::Game>,
+    mut game: ResMut<&'static mut game::Game>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     mut interaction_query: Query<
@@ -110,7 +110,10 @@ fn button_system(
 }
 
 /// Update text with the correct turn
-fn next_move_text_update(game: ResMut<game::Game>, mut query: Query<(&mut Text, &NextMoveText)>) {
+fn next_move_text_update(
+    game: Res<&'static mut game::Game>,
+    mut query: Query<(&mut Text, &NextMoveText)>,
+) {
     if game.is_changed() {
         return;
     }

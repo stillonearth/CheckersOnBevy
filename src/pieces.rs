@@ -19,13 +19,13 @@ pub struct EventPieceMove(pub Entity);
 
 pub fn create_pieces(
     mut commands: Commands,
-    mut game: ResMut<game::Game>,
+    game: ResMut<&'static mut game::Game>,
     asset_server: Res<AssetServer>,
     square_materials: Res<materials::Materials>,
 ) {
     let cp_handle = asset_server.load("microsoft.glb#Mesh0/Primitive0");
 
-    for piece in game.state.pieces.iter_mut() {
+    for piece in game.state.pieces.iter() {
         let bundle = PbrBundle {
             mesh: cp_handle.clone(),
             material: match piece.color {

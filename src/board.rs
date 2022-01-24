@@ -123,41 +123,38 @@ fn find_square_by_entity(
 
 pub fn create_board(
     mut commands: Commands,
+    game: Res<&'static mut game::Game>,
     mut meshes: ResMut<Assets<Mesh>>,
     square_materials: Res<materials::Materials>,
 ) {
     // Add meshes and materials
     let mesh = meshes.add(Mesh::from(shape::Plane { size: 1. }));
 
-    // Spawn 64 squares
-    for i in 0..8 {
-        for j in 0..8 {
-            let square = game::Square { x: i, y: j };
-            let material = if square.color() == game::Color::White {
-                square_materials.white_color.clone()
-            } else {
-                square_materials.black_color.clone()
-            };
+    for square in game.squares.iter() {
+        let material = if square.color() == game::Color::White {
+            square_materials.white_color.clone()
+        } else {
+            square_materials.black_color.clone()
+        };
 
-            let bundle = PbrBundle {
-                mesh: mesh.clone(),
-                material: material,
-                transform: Transform::from_translation(Vec3::new(i as f32, 0., j as f32)),
-                ..Default::default()
-            };
+        let bundle = PbrBundle {
+            mesh: mesh.clone(),
+            material: material,
+            transform: Transform::from_translation(Vec3::new(square.x as f32, 0., square.y as f32)),
+            ..Default::default()
+        };
 
-            commands
-                .spawn_bundle(bundle)
-                .insert_bundle(PickableBundle::default())
-                .insert(square);
-        }
+        commands
+            .spawn_bundle(bundle)
+            .insert_bundle(PickableBundle::default())
+            .insert(*square);
     }
 }
 
 fn click_square(
     mut commands: Commands,
     // game logic
-    mut game: ResMut<game::Game>,
+    mut game: ResMut<&'static mut game::Game>,
     // bevy game entities
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
@@ -226,7 +223,10 @@ fn event_square_selected(
     selected_square.entity = filter_just_selected_event(picking_events);
 }
 
-fn check_game_termination(game: Res<game::Game>, mut event_app_exit: ResMut<Events<AppExit>>) {
+fn check_game_termination(
+    game: Res<&'static mut game::Game>,
+    mut event_app_exit: ResMut<Events<AppExit>>,
+) {
     if !game.is_changed() {
         return;
     }

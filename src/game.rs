@@ -16,7 +16,7 @@ pub enum MoveType {
 
 pub type Position = (u8, u8);
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct PlayerTurn {
     pub color: Color,
     pub turn_count: u8,
@@ -42,6 +42,7 @@ impl PlayerTurn {
 }
 
 #[derive(Component, Debug, Copy, Clone, PartialEq)]
+
 pub struct Piece {
     pub color: Color,
     pub y: u8,
@@ -163,12 +164,14 @@ impl Piece {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
+//
 pub enum Color {
     White,
     Black,
 }
 
 #[derive(Component, Copy, Clone, Debug)]
+
 pub struct Square {
     pub x: u8,
     pub y: u8,
@@ -183,15 +186,18 @@ impl Square {
     }
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Clone)]
+
 pub struct GameState {
     pub pieces: Vec<Piece>,
     pub turn: PlayerTurn,
 }
 
 #[derive(Debug)]
+//
 pub struct Game {
     pub state: GameState,
+    pub squares: Vec<Square>,
 }
 
 impl Default for Game {
@@ -219,7 +225,17 @@ impl Default for Game {
             i += 1;
         }
 
+        let mut squares: Vec<Square> = Vec::new();
+
+        // Spawn 64 squares
+        for i in 0..8 {
+            for j in 0..8 {
+                squares.push(Square { x: i, y: j });
+            }
+        }
+
         return Game {
+            squares,
             state: GameState {
                 pieces,
                 turn: PlayerTurn {
@@ -232,6 +248,12 @@ impl Default for Game {
 }
 
 impl Game {
+    pub fn new() -> Game {
+        return Game {
+            ..Default::default()
+        };
+    }
+
     pub fn check_termination(&self) -> GameTermination {
         let piece_in_set = |p: &Piece, collection: Vec<Position>| -> bool {
             let cnt = collection
