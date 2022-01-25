@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use pyo3::prelude::*;
 
 #[derive(Debug)]
 pub enum GameTermination {
@@ -7,7 +8,7 @@ pub enum GameTermination {
     Unterminated,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MoveType {
     Invalid,
     JumpOver,
@@ -16,10 +17,14 @@ pub enum MoveType {
 
 pub type Position = (u8, u8);
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone)]
+#[pyclass]
 pub struct PlayerTurn {
+    // #[pyo3(get, set)]
     pub color: Color,
+    #[pyo3(get, set)]
     pub turn_count: u8,
+    #[pyo3(get, set)]
     pub chain_count: u8,
 }
 
@@ -44,12 +49,18 @@ impl PlayerTurn {
     }
 }
 
-#[derive(Component, Debug, Copy, Clone, PartialEq)]
-
+#[pyclass]
+#[derive(Component, Debug, Clone, PartialEq, Copy)]
 pub struct Piece {
     pub color: Color,
+
+    #[pyo3(get, set)]
     pub y: u8,
+
+    #[pyo3(get, set)]
     pub x: u8,
+
+    #[pyo3(get, set)]
     pub id: u8,
 }
 
@@ -166,16 +177,19 @@ impl Piece {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum Color {
     White,
     Black,
 }
 
 #[derive(Component, Copy, Clone, Debug)]
-
+#[pyclass]
 pub struct Square {
+    #[pyo3(get, set)]
     pub x: u8,
+
+    #[pyo3(get, set)]
     pub y: u8,
 }
 impl Square {
@@ -189,9 +203,12 @@ impl Square {
 }
 
 #[derive(Debug, PartialEq, Default, Clone)]
-
+#[pyclass]
 pub struct GameState {
+    #[pyo3(get, set)]
     pub pieces: Vec<Piece>,
+
+    // #[pyo3(get, set)]
     pub turn: PlayerTurn,
 }
 
@@ -289,9 +306,9 @@ impl Game {
 
         if self.state.turn.turn_count >= 40 {
             if number_of_whites > number_of_blacks {
-                return GameTermination::Black;
-            } else {
                 return GameTermination::White;
+            } else {
+                return GameTermination::Black;
             }
         }
 
@@ -339,7 +356,6 @@ impl Game {
 // Game Logic
 // ---
 
-/// Returns None if square is empty, returns a Some with the color if not
 pub fn color_of_square(pos: (u8, u8), pieces: &Vec<Piece>) -> Option<Color> {
     for piece in pieces {
         if piece.x == pos.0 && piece.y == pos.1 {

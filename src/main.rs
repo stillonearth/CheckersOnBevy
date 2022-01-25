@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 
-use std::cell::RefCell;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -20,9 +19,5 @@ fn main() {
     let game = Arc::new(Mutex::<game::Game>::new(game::Game::new()));
 
     let mut app = bevy_app::create_bevy_app(Arc::clone(&game));
-    // app.run();
-
-    let mut env = gym_env::CheckersEnv::new(Arc::clone(&game), app);
-
-    env.start_bevy_app();
+    app.run();
 }

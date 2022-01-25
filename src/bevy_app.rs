@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 
-use std::cell::RefCell;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -12,7 +11,7 @@ use crate::game;
 use crate::materials;
 use crate::ui;
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 pub fn create_bevy_app(game: Arc<Mutex<game::Game>>) -> App {
     let mut app = App::new();

@@ -1,28 +1,32 @@
-// use pyo3::prelude::*;
+use pyo3::prelude::*;
 
-// // mod animations;
-// // mod bevy_app;
-// // mod board;
-// // mod game;
-// // mod materials;
-// // mod pieces;
-// // mod ui;
+use std::sync::Arc;
+use std::sync::Mutex;
 
-// /// Formats the sum of two numbers as string.
-// #[pyfunction]
-// fn run() -> PyResult<()> {
-//     // let checkers_game_box = Box::new(game::Game::new());
-//     // let checkers_game: &'static mut game::Game = Box::leak(checkers_game_box);
-//     // let env = gym_env::CheckersEnv::new(checkers_game);
+mod animations;
+mod bevy_app;
+mod board;
+mod game;
+mod gym_env;
+mod materials;
+mod pieces;
+mod ui;
 
-//     Ok(())
-// }
+/// Formats the sum of two numbers as string.
+#[pyfunction]
+fn new() -> PyResult<gym_env::CheckersEnv> {
+    let game = Arc::new(Mutex::<game::Game>::new(game::Game::new()));
+    let env = gym_env::CheckersEnv::new(Arc::clone(&game));
 
-// /// A Python module implemented in Rust. The name of this function must match
-// /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
-// /// import the module.
-// #[pymodule]
-// fn checkers(_py: Python, m: &PyModule) -> PyResult<()> {
-//     m.add_function(wrap_pyfunction!(run, m)?)?;
-//     Ok(())
-// }
+    Ok(env)
+}
+
+/// A Python module implemented in Rust. The name of this function must match
+/// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
+/// import the module.
+#[pymodule]
+fn checkers(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<gym_env::CheckersEnv>()?;
+    m.add_function(wrap_pyfunction!(new, m)?)?;
+    Ok(())
+}

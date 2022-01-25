@@ -1,17 +1,22 @@
 use bevy::prelude::*;
+use pyo3::prelude::*;
+use std::thread;
 
+use crate::bevy_app;
 use crate::game;
 
 use std::sync::Arc;
 use std::sync::Mutex;
 
 #[derive(Debug, Clone)]
+#[pyclass]
 pub struct Action {
     pub piece: game::Piece,
     pub square: game::Square,
 }
 
 #[derive(Debug)]
+#[pyclass]
 pub struct Step {
     pub obs: game::GameState,
     pub action: Action,
@@ -21,25 +26,32 @@ pub struct Step {
 }
 
 // An OpenAI Gym session.
+#[pyclass(unsendable)]
 pub struct CheckersEnv {
     game: Arc<Mutex<game::Game>>,
     initial_state: game::GameState,
-    bevy_app: App,
 }
 
 impl CheckersEnv {
-    pub fn new(game: Arc<Mutex<game::Game>>, app: App) -> CheckersEnv {
+    pub fn new(game: Arc<Mutex<game::Game>>) -> CheckersEnv {
         let initial_state = game.lock().unwrap().state.clone();
 
         CheckersEnv {
-            bevy_app: app,
             game,
             initial_state,
         }
     }
+}
 
-    pub fn start_bevy_app(&mut self) {
-        self.bevy_app.run();
+#[pymethods]
+impl CheckersEnv {
+    pub fn start_frontend(&mut self) {
+        let game = self.game.clone();
+        let handle = thread::spawn(move || {
+            let mut app = bevy_app::create_bevy_app(game);
+            app.run();
+            // _app.run();
+        });
     }
 
     pub fn current_state(&self) -> game::GameState {
