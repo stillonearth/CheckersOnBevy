@@ -1,6 +1,10 @@
 use crate::{board::*, game};
 use bevy::prelude::*;
 
+use std::cell::RefCell;
+use std::sync::Arc;
+use std::sync::Mutex;
+
 // Component to mark the Text entity
 #[derive(Component)]
 struct NextMoveText;
@@ -83,7 +87,7 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn button_system(
-    mut game: ResMut<&'static mut game::Game>,
+    game: ResMut<Arc<Mutex<game::Game>>>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     mut interaction_query: Query<
@@ -97,7 +101,7 @@ fn button_system(
                 *color = PRESSED_BUTTON.into();
                 selected_square.entity = None;
                 selected_piece.entity = None;
-                game.state.turn.change();
+                game.lock().unwrap().state.turn.change();
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
@@ -111,12 +115,10 @@ fn button_system(
 
 /// Update text with the correct turn
 fn next_move_text_update(
-    game: Res<&'static mut game::Game>,
+    game: Res<Arc<Mutex<game::Game>>>,
     mut query: Query<(&mut Text, &NextMoveText)>,
 ) {
-    if game.is_changed() {
-        return;
-    }
+    let game = game.lock().unwrap();
 
     for (mut text, _tag) in query.iter_mut() {
         let str = format!(

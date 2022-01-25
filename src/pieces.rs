@@ -3,6 +3,9 @@ use bevy::prelude::*;
 use bevy::utils::Duration;
 use bevy_tweening::*;
 
+use std::sync::Arc;
+use std::sync::Mutex;
+
 use crate::animations;
 use crate::board;
 use crate::game;
@@ -19,11 +22,13 @@ pub struct EventPieceMove(pub Entity);
 
 pub fn create_pieces(
     mut commands: Commands,
-    game: ResMut<&'static mut game::Game>,
+    game: Res<Arc<Mutex<game::Game>>>,
     asset_server: Res<AssetServer>,
     square_materials: Res<materials::Materials>,
 ) {
     let cp_handle = asset_server.load("microsoft.glb#Mesh0/Primitive0");
+
+    let game = game.lock().unwrap();
 
     for piece in game.state.pieces.iter() {
         let bundle = PbrBundle {
@@ -35,7 +40,6 @@ pub fn create_pieces(
             transform: model_transform(*piece),
             ..Default::default()
         };
-
         commands.spawn_bundle(bundle).insert(*piece);
     }
 }
@@ -81,7 +85,7 @@ fn event_piece_moved(
 }
 
 fn highlight_piece(
-    // game: Res<game::Game>,
+    // game: Res<Arc<Mutex<game::Game>>>,
     // turn: Res<game::PlayerTurn>,
     selected_piece: Res<board::SelectedPiece>,
     square_materials: Res<materials::Materials>,

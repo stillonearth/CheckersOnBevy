@@ -3,16 +3,20 @@ use bevy::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 
+use std::cell::RefCell;
+use std::sync::Arc;
+use std::sync::Mutex;
+
 use crate::board;
 use crate::game;
 use crate::materials;
-use crate::pieces;
 use crate::ui;
 
 const DEBUG: bool = false;
 
-pub fn create_bevy_app(game: &'static mut game::Game) -> App {
+pub fn create_bevy_app(game: Arc<Mutex<game::Game>>) -> App {
     let mut app = App::new();
+    // let game_res: RefMut<_> = game.borrow_mut().;
 
     app.insert_resource(Msaa { samples: 4 })
         // Set WindowDescriptor Resource to change title and size

@@ -3,6 +3,9 @@ use bevy::pbr::*;
 use bevy::{app::AppExit, prelude::*};
 use bevy_mod_picking::*;
 
+use std::sync::Arc;
+use std::sync::Mutex;
+
 use crate::game;
 use crate::materials;
 use crate::pieces;
@@ -123,12 +126,13 @@ fn find_square_by_entity(
 
 pub fn create_board(
     mut commands: Commands,
-    game: Res<&'static mut game::Game>,
+    game: Res<Arc<Mutex<game::Game>>>,
     mut meshes: ResMut<Assets<Mesh>>,
     square_materials: Res<materials::Materials>,
 ) {
     // Add meshes and materials
     let mesh = meshes.add(Mesh::from(shape::Plane { size: 1. }));
+    let game = game.lock().unwrap();
 
     for square in game.squares.iter() {
         let material = if square.color() == game::Color::White {
@@ -139,7 +143,7 @@ pub fn create_board(
 
         let bundle = PbrBundle {
             mesh: mesh.clone(),
-            material: material,
+            material,
             transform: Transform::from_translation(Vec3::new(square.x as f32, 0., square.y as f32)),
             ..Default::default()
         };
@@ -154,7 +158,7 @@ pub fn create_board(
 fn click_square(
     mut commands: Commands,
     // game logic
-    mut game: ResMut<&'static mut game::Game>,
+    game: ResMut<Arc<Mutex<game::Game>>>,
     // bevy game entities
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
@@ -164,6 +168,7 @@ fn click_square(
     square_query: Query<(Entity, &game::Square)>,
     pieces_query: Query<(Entity, &mut game::Piece)>,
 ) {
+    let mut game = game.lock().unwrap();
     let (_, new_square) = find_square_by_entity(selected_square.entity, &square_query);
 
     if new_square.is_none() {
@@ -224,14 +229,10 @@ fn event_square_selected(
 }
 
 fn check_game_termination(
-    game: Res<&'static mut game::Game>,
+    game: Res<Arc<Mutex<game::Game>>>,
     mut event_app_exit: ResMut<Events<AppExit>>,
 ) {
-    if !game.is_changed() {
-        return;
-    }
-    // Check whether game has ended
-    match game.check_termination() {
+    match game.lock().unwrap().check_termination() {
         game::GameTermination::Black => {
             println!("Black won! Thanks for playing!");
             event_app_exit.send(AppExit);

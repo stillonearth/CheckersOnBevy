@@ -16,10 +16,11 @@ pub enum MoveType {
 
 pub type Position = (u8, u8);
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub struct PlayerTurn {
     pub color: Color,
     pub turn_count: u8,
+    pub chain_count: u8,
 }
 
 impl Default for PlayerTurn {
@@ -27,6 +28,7 @@ impl Default for PlayerTurn {
         PlayerTurn {
             color: Color::White,
             turn_count: 0,
+            chain_count: 0,
         }
     }
 }
@@ -38,6 +40,7 @@ impl PlayerTurn {
             Color::Black => Color::White,
         };
         self.turn_count += 1;
+        self.chain_count = 0;
     }
 }
 
@@ -164,7 +167,6 @@ impl Piece {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-//
 pub enum Color {
     White,
     Black,
@@ -193,8 +195,7 @@ pub struct GameState {
     pub turn: PlayerTurn,
 }
 
-#[derive(Debug)]
-//
+#[derive(Debug, Clone)]
 pub struct Game {
     pub state: GameState,
     pub squares: Vec<Square>,
@@ -240,6 +241,7 @@ impl Default for Game {
                 pieces,
                 turn: PlayerTurn {
                     color: Color::White,
+                    chain_count: 0,
                     turn_count: 0,
                 },
             },
@@ -285,7 +287,7 @@ impl Game {
             };
         }
 
-        if self.state.turn.turn_count > 40 {
+        if self.state.turn.turn_count >= 40 {
             if number_of_whites > number_of_blacks {
                 return GameTermination::Black;
             } else {
@@ -302,10 +304,17 @@ impl Game {
         square: Square,
     ) -> (MoveType, &GameState, GameTermination) {
         let mut move_type: MoveType = MoveType::Invalid;
+
+        if self.state.turn.chain_count > 10 {
+            self.state.turn.change();
+            return (MoveType::Regular, &self.state, self.check_termination());
+        }
+
         match piece.is_move_valid(square, &self.state.pieces) {
             MoveType::JumpOver => {
                 piece.move_to_square(square);
                 move_type = MoveType::JumpOver;
+                self.state.turn.chain_count += 1;
             }
             MoveType::Regular => {
                 piece.move_to_square(square);
