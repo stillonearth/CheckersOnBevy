@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use pyo3::prelude::*;
+
 use std::thread;
 
 use crate::bevy_app;
@@ -18,10 +19,15 @@ pub struct Action {
 #[derive(Debug)]
 #[pyclass]
 pub struct Step {
+    #[pyo3(get, set)]
     pub obs: game::GameState,
+    #[pyo3(get, set)]
     pub action: Action,
+    #[pyo3(get, set)]
     pub reward: i8,
+    #[pyo3(get, set)]
     pub is_done: bool,
+    #[pyo3(get, set)]
     pub is_valid: bool,
 }
 
@@ -30,15 +36,18 @@ pub struct Step {
 pub struct CheckersEnv {
     game: Arc<Mutex<game::Game>>,
     initial_state: game::GameState,
+    // app: App,
 }
 
 impl CheckersEnv {
     pub fn new(game: Arc<Mutex<game::Game>>) -> CheckersEnv {
+        let _game = Arc::clone(&game);
         let initial_state = game.lock().unwrap().state.clone();
 
         CheckersEnv {
             game,
             initial_state,
+            // app: bevy_app::create_bevy_app(_game),
         }
     }
 }
@@ -46,12 +55,7 @@ impl CheckersEnv {
 #[pymethods]
 impl CheckersEnv {
     pub fn start_frontend(&mut self) {
-        let game = self.game.clone();
-        let handle = thread::spawn(move || {
-            let mut app = bevy_app::create_bevy_app(game);
-            app.run();
-            // _app.run();
-        });
+        // self.app.run();
     }
 
     pub fn current_state(&self) -> game::GameState {
@@ -65,7 +69,6 @@ impl CheckersEnv {
         return game.state.clone();
     }
 
-    // Applies an environment step using the specified action.
     pub fn step(&mut self, mut action: Action) -> Step {
         let mut game = self.game.lock().unwrap();
 

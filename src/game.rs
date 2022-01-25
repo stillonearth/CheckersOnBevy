@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use pyo3::prelude::*;
 
+use dict_derive::{FromPyObject, IntoPyObject};
+
 #[derive(Debug)]
 pub enum GameTermination {
     White,
@@ -49,19 +51,26 @@ impl PlayerTurn {
     }
 }
 
-#[pyclass]
 #[derive(Component, Debug, Clone, PartialEq, Copy)]
+#[pyclass]
 pub struct Piece {
     pub color: Color,
-
     #[pyo3(get, set)]
     pub y: u8,
-
     #[pyo3(get, set)]
     pub x: u8,
-
     #[pyo3(get, set)]
     pub id: u8,
+}
+
+#[pymethods]
+impl Piece {
+    pub fn get_color(&self) -> String {
+        match self.color {
+            Color::Black => "black".to_string(),
+            Color::White => "white".to_string(),
+        }
+    }
 }
 
 impl Piece {
@@ -183,13 +192,9 @@ pub enum Color {
     Black,
 }
 
-#[derive(Component, Copy, Clone, Debug)]
-#[pyclass]
+#[derive(Component, Copy, Clone, Debug, FromPyObject, IntoPyObject)]
 pub struct Square {
-    #[pyo3(get, set)]
     pub x: u8,
-
-    #[pyo3(get, set)]
     pub y: u8,
 }
 impl Square {
@@ -207,8 +212,6 @@ impl Square {
 pub struct GameState {
     #[pyo3(get, set)]
     pub pieces: Vec<Piece>,
-
-    // #[pyo3(get, set)]
     pub turn: PlayerTurn,
 }
 
@@ -351,10 +354,6 @@ impl Game {
         return (move_type, &self.state, self.check_termination());
     }
 }
-
-// ---
-// Game Logic
-// ---
 
 pub fn color_of_square(pos: (u8, u8), pieces: &Vec<Piece>) -> Option<Color> {
     for piece in pieces {

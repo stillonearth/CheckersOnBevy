@@ -11,6 +11,7 @@ bevy-inspector-egui = {version = "0.7.2"}
 bevy_mod_picking = {git = "https://github.com/aevyrie/bevy_mod_picking"}
 bevy_tweening = {version = "0.2.0"}
 pyo3 = { version = "0.15.1", features = ["extension-module"] }
+dict_derive = "0.4.0"
 
 [lib]
 name = "checkers"

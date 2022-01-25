@@ -16,7 +16,7 @@ mod ui;
 #[pyfunction]
 fn new() -> PyResult<gym_env::CheckersEnv> {
     let game = Arc::new(Mutex::<game::Game>::new(game::Game::new()));
-    let env = gym_env::CheckersEnv::new(Arc::clone(&game));
+    let env = gym_env::CheckersEnv::new(game);
 
     Ok(env)
 }
