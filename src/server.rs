@@ -41,10 +41,13 @@ impl Environment for MyEnvironment {
     }
 
     async fn step(&self, request: Request<StepRequest>) -> Result<Response<JsonReply>, Status> {
-        println!("Got a request: {:?}", request);
+        let action_json = String::from(&request.into_inner().action);
+        let action: gym_env::Action = serde_json::from_str(&action_json).unwrap();
+
+        let step = self.gym_env.lock().unwrap().step(action);
 
         let reply = environment::JsonReply {
-            json: format!("Hello!").into(),
+            json: serde_json::to_string(&step).unwrap(),
         };
 
         Ok(Response::new(reply))

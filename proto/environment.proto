@@ -15,7 +15,7 @@ message ResetRequest {
 }
 
 message StepRequest {
-    string serialized_action = 1;
+    string action = 1;
 }
  
 message CurrentStateRequest {
