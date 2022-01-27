@@ -86,7 +86,7 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn button_system(
-    game: ResMut<Arc<Mutex<game::Game>>>,
+    mut game: ResMut<game::Game>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     mut interaction_query: Query<
@@ -100,7 +100,7 @@ fn button_system(
                 *color = PRESSED_BUTTON.into();
                 selected_square.entity = None;
                 selected_piece.entity = None;
-                game.lock().unwrap().state.turn.change();
+                game.state.turn.change();
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
@@ -113,11 +113,8 @@ fn button_system(
 }
 
 /// Update text with the correct turn
-fn next_move_text_update(
-    game: Res<Arc<Mutex<game::Game>>>,
-    mut query: Query<(&mut Text, &NextMoveText)>,
-) {
-    let game = game.lock().unwrap();
+fn next_move_text_update(game: Res<game::Game>, mut query: Query<(&mut Text, &NextMoveText)>) {
+    let game = game;
 
     for (mut text, _tag) in query.iter_mut() {
         let str = format!(

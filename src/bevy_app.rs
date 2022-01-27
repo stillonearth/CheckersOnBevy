@@ -13,7 +13,7 @@ use crate::ui;
 
 const DEBUG: bool = true;
 
-pub fn create_bevy_app(game: Arc<Mutex<game::Game>>) -> App {
+pub fn create_bevy_app(game: game::Game) -> App {
     let mut app = App::new();
     // let game_res: RefMut<_> = game.borrow_mut().;
 

@@ -1,16 +1,14 @@
 use bevy::prelude::*;
-use pyo3::prelude::*;
+use serde::{Deserialize, Serialize};
 
-use dict_derive::{FromPyObject, IntoPyObject};
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum GameTermination {
     White,
     Black,
     Unterminated,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MoveType {
     Invalid,
     JumpOver,
@@ -19,14 +17,10 @@ pub enum MoveType {
 
 pub type Position = (u8, u8);
 
-#[derive(PartialEq, Debug, Clone)]
-#[pyclass]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerTurn {
-    // #[pyo3(get, set)]
     pub color: Color,
-    #[pyo3(get, set)]
     pub turn_count: u8,
-    #[pyo3(get, set)]
     pub chain_count: u8,
 }
 
@@ -51,19 +45,14 @@ impl PlayerTurn {
     }
 }
 
-#[derive(Component, Debug, Clone, PartialEq, Copy)]
-#[pyclass]
+#[derive(Component, Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct Piece {
     pub color: Color,
-    #[pyo3(get, set)]
     pub y: u8,
-    #[pyo3(get, set)]
     pub x: u8,
-    #[pyo3(get, set)]
     pub id: u8,
 }
 
-#[pymethods]
 impl Piece {
     pub fn get_color(&self) -> String {
         match self.color {
@@ -186,13 +175,13 @@ impl Piece {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Copy)]
+#[derive(Clone, Debug, PartialEq, Copy, Serialize, Deserialize)]
 pub enum Color {
     White,
     Black,
 }
 
-#[derive(Component, Copy, Clone, Debug, FromPyObject, IntoPyObject)]
+#[derive(Component, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Square {
     pub x: u8,
     pub y: u8,
@@ -207,10 +196,8 @@ impl Square {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Clone)]
-#[pyclass]
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 pub struct GameState {
-    #[pyo3(get, set)]
     pub pieces: Vec<Piece>,
     pub turn: PlayerTurn,
 }

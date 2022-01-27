@@ -1,0 +1,28 @@
+syntax = "proto3";
+package environment;
+
+// Implementation of OpenAI environment 
+service Environment {
+    rpc Reset (ResetRequest) returns (JsonReply);
+    rpc Step (StepRequest) returns (JsonReply);
+    rpc CurrentState (CurrentStateRequest) returns (JsonReply);
+}
+
+// Requests
+
+message ResetRequest {
+    string state = 1;
+}
+
+message StepRequest {
+    string serialized_action = 1;
+}
+ 
+message CurrentStateRequest {
+}
+
+// Replies
+
+message JsonReply {
+    string json = 1;
+}

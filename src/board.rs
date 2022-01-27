@@ -3,12 +3,13 @@ use bevy::pbr::*;
 use bevy::{app::AppExit, prelude::*};
 use bevy_mod_picking::*;
 
-use std::sync::Arc;
-use std::sync::Mutex;
+use bevy::utils::Duration;
+use bevy_tweening::*;
 
+use crate::animations;
+use crate::board;
 use crate::game;
 use crate::materials;
-use crate::pieces;
 
 // ---
 // Resources
@@ -35,6 +36,11 @@ impl SelectedPiece {
         self.entity = None;
     }
 }
+
+// ---
+// Events
+// ---
+pub struct EventPieceMove(pub Entity);
 
 // ---
 // Helpers
@@ -126,13 +132,13 @@ fn find_square_by_entity(
 
 pub fn create_board(
     mut commands: Commands,
-    game: Res<Arc<Mutex<game::Game>>>,
+    game: Res<game::Game>,
     mut meshes: ResMut<Assets<Mesh>>,
     square_materials: Res<materials::Materials>,
 ) {
     // Add meshes and materials
     let mesh = meshes.add(Mesh::from(shape::Plane { size: 1. }));
-    let game = game.lock().unwrap();
+    let game = game;
 
     for square in game.squares.iter() {
         let material = if square.color() == game::Color::White {
@@ -157,18 +163,16 @@ pub fn create_board(
 
 fn click_square(
     mut commands: Commands,
-    // game logic
-    game: ResMut<Arc<Mutex<game::Game>>>,
+    mut game: ResMut<game::Game>,
     // bevy game entities
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     // events
-    mut event_piece_move: EventWriter<pieces::EventPieceMove>,
+    mut event_piece_move: EventWriter<EventPieceMove>,
     // queries
     square_query: Query<(Entity, &game::Square)>,
     pieces_query: Query<(Entity, &mut game::Piece)>,
 ) {
-    let mut game = game.lock().unwrap();
     let (_, new_square) = find_square_by_entity(selected_square.entity, &square_query);
 
     if new_square.is_none() {
@@ -191,34 +195,26 @@ fn click_square(
         return;
     }
 
-    let piece: &mut game::Piece = &mut old_piece.unwrap();
-    let entity = old_entity.unwrap();
+    let piece = &mut old_piece.unwrap();
+    let turn_color = game.state.turn.color;
 
-    let (move_type, state, termination) = game.step(piece, new_square.unwrap());
+    let (move_type, _, _) = game.step(piece, new_square.unwrap());
+
     // Check whether game move was valid
-
-    info!(
-        "move_type: {:?}\tstate: {:?}\ttermination: {:?}",
-        move_type, state, termination
-    );
-
     match move_type {
         game::MoveType::Invalid => {
-            if new_piece != None && new_piece.unwrap().color == game.state.turn.color {
+            if new_piece != None && new_piece.unwrap().color == turn_color {
                 selected_piece.entity = new_entity;
             }
         }
-        game::MoveType::JumpOver => {
-            commands.entity(entity).insert(*piece);
-            event_piece_move.send(pieces::EventPieceMove(entity));
-        }
+        game::MoveType::JumpOver => {}
         game::MoveType::Regular => {
             selected_piece.deselect();
             selected_square.deselect();
-            commands.entity(entity).insert(*piece);
-            event_piece_move.send(pieces::EventPieceMove(entity));
         }
     }
+
+    // game.state = new_state.clone();
 }
 
 fn event_square_selected(
@@ -228,11 +224,8 @@ fn event_square_selected(
     selected_square.entity = filter_just_selected_event(picking_events);
 }
 
-fn check_game_termination(
-    game: Res<Arc<Mutex<game::Game>>>,
-    mut event_app_exit: ResMut<Events<AppExit>>,
-) {
-    match game.lock().unwrap().check_termination() {
+fn check_game_termination(game: Res<game::Game>, mut event_app_exit: ResMut<Events<AppExit>>) {
+    match game.check_termination() {
         game::GameTermination::Black => {
             println!("Black won! Thanks for playing!");
             event_app_exit.send(AppExit);
@@ -245,9 +238,127 @@ fn check_game_termination(
     }
 }
 
+// this should be done otherwise
+fn update_entity_pieces(
+    mut commands: Commands,
+    game: Res<game::Game>,
+    // events
+    mut event_piece_move: EventWriter<EventPieceMove>,
+    // queries
+    mut query: Query<(Entity, &game::Piece)>,
+) {
+    for (e, p) in query.iter_mut() {
+        let new_piece = game
+            .state
+            .pieces
+            .iter()
+            .filter(|_p| _p.id == p.id)
+            .nth(0)
+            .unwrap();
+
+        if p != new_piece {
+            commands.entity(e).insert(*new_piece);
+            event_piece_move.send(EventPieceMove(e));
+        }
+    }
+}
+
+pub fn create_pieces(
+    mut commands: Commands,
+    mut game: ResMut<game::Game>,
+    asset_server: Res<AssetServer>,
+    square_materials: Res<materials::Materials>,
+) {
+    let cp_handle = asset_server.load("microsoft.glb#Mesh0/Primitive0");
+
+    for piece in game.state.pieces.iter_mut() {
+        let bundle = PbrBundle {
+            mesh: cp_handle.clone(),
+            material: match piece.color {
+                game::Color::Black => square_materials.black_color.clone(),
+                game::Color::White => square_materials.white_color.clone(),
+            },
+            transform: model_transform(*piece),
+            ..Default::default()
+        };
+        commands.spawn_bundle(bundle).insert(*piece);
+    }
+}
+
+pub fn model_transform(piece: game::Piece) -> Transform {
+    // Translation
+    let mut transform = Transform::from_translation(piece.translation());
+
+    // Rotation
+    transform.rotate(Quat::from_rotation_x(-1.57));
+    if piece.color == game::Color::Black {
+        transform.rotate(Quat::from_rotation_y(-1.57));
+    } else {
+        transform.rotate(Quat::from_rotation_y(1.57));
+    }
+    transform.rotate(Quat::from_rotation_z(3.14));
+
+    // Scale
+    transform.apply_non_uniform_scale(Vec3::new(0.02, 0.02, 0.02));
+
+    return transform;
+}
+
+fn event_piece_moved(
+    mut commands: Commands,
+    mut picking_events: EventReader<EventPieceMove>,
+    mut query: Query<(Entity, &game::Piece, &Transform)>,
+) {
+    for event in picking_events.iter() {
+        let (entity, piece, transform) = query.get_mut(event.0).unwrap();
+
+        commands.entity(entity).insert(Animator::new(
+            EaseFunction::QuadraticInOut,
+            TweeningType::Once {
+                duration: Duration::from_millis(800),
+            },
+            animations::TransformPositionWithYJumpLens {
+                start: transform.translation,
+                end: piece.translation(),
+            },
+        ));
+    }
+}
+
+fn highlight_piece(
+    // game: Res<game::Game>,
+    // turn: Res<game::PlayerTurn>,
+    selected_piece: Res<board::SelectedPiece>,
+    square_materials: Res<materials::Materials>,
+    mut query: Query<(Entity, &game::Piece, &mut Handle<StandardMaterial>)>,
+) {
+    // info!("game {:?}", game.state.turn.color);
+    // info!("turn {:?}", turn.color);
+
+    for (entity, piece, mut material) in query.iter_mut() {
+        if Some(entity) == selected_piece.entity {
+            *material = square_materials.selected_color.clone();
+        } else if piece.color == game::Color::White {
+            *material = square_materials.white_color.clone();
+        } else {
+            *material = square_materials.black_color.clone();
+        }
+    }
+}
+
 // ---
 // Plugins
 // ---
+
+pub struct PiecesPlugin;
+impl Plugin for PiecesPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(create_pieces.system())
+            .add_plugin(TweeningPlugin)
+            .add_system(highlight_piece.system())
+            .add_system(event_piece_moved.system());
+    }
+}
 
 pub struct BoardPlugin;
 impl Plugin for BoardPlugin {
@@ -255,10 +366,11 @@ impl Plugin for BoardPlugin {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
             .add_startup_system(create_board)
+            .add_system(update_entity_pieces)
             .add_system(event_square_selected)
             .add_system(click_square)
             .add_system(check_game_termination)
-            .add_event::<pieces::EventPieceMove>()
-            .add_plugin(pieces::PiecesPlugin);
+            .add_event::<EventPieceMove>()
+            .add_plugin(PiecesPlugin);
     }
 }
