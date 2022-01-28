@@ -13,12 +13,12 @@ pub struct Step {
     pub action: Action,
     pub reward: i8,
     pub is_done: bool,
-    pub is_valid: bool,
+    // pub is_valid: bool,
 }
 
 // An OpenAI Gym session.
 pub struct CheckersEnv {
-    game: game::Game,
+    pub game: game::Game,
     initial_state: game::GameState,
 }
 
@@ -30,10 +30,6 @@ impl CheckersEnv {
             game,
             initial_state,
         }
-    }
-
-    pub fn current_state(&self) -> game::GameState {
-        return self.game.state.clone();
     }
 
     pub fn reset(&mut self, state: Option<game::GameState>) -> game::GameState {
@@ -53,17 +49,19 @@ impl CheckersEnv {
             action,
             reward: match termination {
                 game::GameTermination::Unterminated => 0,
-                game::GameTermination::Black => 1,
-                game::GameTermination::White => -1,
+                game::GameTermination::Black => 10,
+                game::GameTermination::White => -10,
+                game::GameTermination::BlackMoveLimit => 5,
+                game::GameTermination::WhiteMoveLimit => -5,
             },
             is_done: match termination {
                 game::GameTermination::Unterminated => false,
                 _ => true,
             },
-            is_valid: match move_type {
-                game::MoveType::Invalid => false,
-                _ => true,
-            },
+            // is_valid: match move_type {
+            //     game::MoveType::Invalid => false,
+            //     _ => true,
+            // },
         };
     }
 }

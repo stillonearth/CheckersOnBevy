@@ -31,7 +31,8 @@ impl Environment for MyEnvironment {
             }
         };
 
-        let new_state = self.gym_env.lock().unwrap().reset(state);
+        let mut new_state = self.gym_env.lock().unwrap().reset(state);
+        new_state.moveset = self.gym_env.lock().unwrap().game.possible_moves();
 
         let reply = environment::JsonReply {
             json: serde_json::to_string(&new_state).unwrap(),
@@ -57,8 +58,11 @@ impl Environment for MyEnvironment {
         &self,
         _: Request<CurrentStateRequest>,
     ) -> Result<Response<JsonReply>, Status> {
+        let mut game_state = self.gym_env.lock().unwrap().game.state.clone();
+        game_state.moveset = self.gym_env.lock().unwrap().game.possible_moves();
+
         let reply = environment::JsonReply {
-            json: serde_json::to_string(&self.gym_env.lock().unwrap().current_state()).unwrap(),
+            json: serde_json::to_string(&game_state).unwrap(),
         };
 
         Ok(Response::new(reply))

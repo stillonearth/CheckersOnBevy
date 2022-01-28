@@ -1,14 +1,19 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+const MOVE_LIMIT: u8 = 80;
+const CHAIN_LIMIT: u8 = 10;
+
+#[derive(Debug, Serialize)]
 pub enum GameTermination {
     White,
     Black,
+    WhiteMoveLimit,
+    BlackMoveLimit,
     Unterminated,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum MoveType {
     Invalid,
     JumpOver,
@@ -200,6 +205,7 @@ impl Square {
 pub struct GameState {
     pub pieces: Vec<Piece>,
     pub turn: PlayerTurn,
+    pub moveset: [Vec<Position>; 18],
 }
 
 #[derive(Debug, Clone)]
@@ -211,7 +217,7 @@ pub struct Game {
 impl Default for Game {
     fn default() -> Self {
         let mut pieces: Vec<Piece> = Vec::new();
-        let mut i: u8 = 0;
+        let mut i: u8 = 1;
 
         for (x, y) in white_start_positions() {
             pieces.push(Piece {
@@ -246,6 +252,7 @@ impl Default for Game {
             squares,
             state: GameState {
                 pieces,
+                moveset: Default::default(),
                 turn: PlayerTurn {
                     color: Color::White,
                     chain_count: 0,
@@ -289,12 +296,12 @@ impl Game {
 
         if number_of_whites == 9 || number_of_blacks == 9 {
             return match self.state.turn.color {
-                Color::White => GameTermination::Black,
-                Color::Black => GameTermination::White,
+                Color::White => GameTermination::BlackMoveLimit,
+                Color::Black => GameTermination::WhiteMoveLimit,
             };
         }
 
-        if self.state.turn.turn_count >= 40 {
+        if self.state.turn.turn_count >= MOVE_LIMIT {
             if number_of_whites > number_of_blacks {
                 return GameTermination::White;
             } else {
@@ -312,7 +319,7 @@ impl Game {
     ) -> (MoveType, &GameState, GameTermination) {
         let mut move_type: MoveType = MoveType::Invalid;
 
-        if self.state.turn.chain_count > 10 {
+        if self.state.turn.chain_count > CHAIN_LIMIT {
             self.state.turn.change();
             return (MoveType::Regular, &self.state, self.check_termination());
         }
@@ -339,6 +346,30 @@ impl Game {
         }
 
         return (move_type, &self.state, self.check_termination());
+    }
+
+    pub fn possible_moves(&self) -> [Vec<Position>; 18] {
+        let mut moveset: [Vec<Position>; 18] = Default::default();
+
+        for i in 0..18 {
+            let p = self.state.pieces.iter().filter(|p| p.id == i).nth(0);
+
+            if p == None {
+                continue;
+            }
+
+            for s in self.squares.iter() {
+                match p.unwrap().is_move_valid(*s, &self.state.pieces) {
+                    MoveType::JumpOver | MoveType::Regular => {
+                        let position: Position = (s.x, s.y);
+                        moveset[i as usize].push(position);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        return moveset;
     }
 }
 

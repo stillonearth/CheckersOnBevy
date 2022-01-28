@@ -11,14 +11,14 @@ struct NextMoveText;
 /// Initialize UiCamera and text
 fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
     let text = Text::with_section(
-        "Next move: White",
+        "",
         TextStyle {
-            font_size: 40.0,
+            font_size: 25.0,
             font: asset_server.load("Roboto-Regular.ttf"),
             color: Color::rgb(0.8, 0.8, 0.8),
         },
         TextAlignment {
-            horizontal: HorizontalAlign::Center,
+            horizontal: HorizontalAlign::Left,
             ..Default::default()
         },
     );
@@ -118,7 +118,7 @@ fn next_move_text_update(game: Res<game::Game>, mut query: Query<(&mut Text, &Ne
 
     for (mut text, _tag) in query.iter_mut() {
         let str = format!(
-            "Move: {}   Turn: {}",
+            "Checkers with Rust, Python + OpenAI Agent\n\nMove: {}  Turn: {}",
             match game.state.turn.color {
                 game::Color::White => "White",
                 game::Color::Black => "Black",

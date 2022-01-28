@@ -162,13 +162,10 @@ pub fn create_board(
 }
 
 fn click_square(
-    mut commands: Commands,
     mut game: ResMut<game::Game>,
     // bevy game entities
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
-    // events
-    mut event_piece_move: EventWriter<EventPieceMove>,
     // queries
     square_query: Query<(Entity, &game::Square)>,
     pieces_query: Query<(Entity, &mut game::Piece)>,
@@ -198,23 +195,24 @@ fn click_square(
     let piece = &mut old_piece.unwrap();
     let turn_color = game.state.turn.color;
 
-    let (move_type, _, _) = game.step(piece, new_square.unwrap());
+    let (move_type, _new_state, _termination) = game.step(piece, new_square.unwrap());
 
     // Check whether game move was valid
     match move_type {
         game::MoveType::Invalid => {
-            if new_piece != None && new_piece.unwrap().color == turn_color {
+            if new_piece != None
+                && new_piece.unwrap().color == turn_color
+                && game.state.turn.chain_count == 0
+            {
                 selected_piece.entity = new_entity;
             }
         }
-        game::MoveType::JumpOver => {}
         game::MoveType::Regular => {
             selected_piece.deselect();
             selected_square.deselect();
         }
+        _ => {}
     }
-
-    // game.state = new_state.clone();
 }
 
 fn event_square_selected(
@@ -226,11 +224,11 @@ fn event_square_selected(
 
 fn check_game_termination(game: Res<game::Game>, mut event_app_exit: ResMut<Events<AppExit>>) {
     match game.check_termination() {
-        game::GameTermination::Black => {
+        game::GameTermination::Black | game::GameTermination::BlackMoveLimit => {
             println!("Black won! Thanks for playing!");
             event_app_exit.send(AppExit);
         }
-        game::GameTermination::White => {
+        game::GameTermination::White | game::GameTermination::WhiteMoveLimit => {
             println!("White won! Thanks for playing!");
             event_app_exit.send(AppExit);
         }
@@ -245,9 +243,9 @@ fn update_entity_pieces(
     // events
     mut event_piece_move: EventWriter<EventPieceMove>,
     // queries
-    mut query: Query<(Entity, &game::Piece)>,
+    query: Query<(Entity, &game::Piece)>,
 ) {
-    for (e, p) in query.iter_mut() {
+    for (e, p) in query.iter() {
         let new_piece = game
             .state
             .pieces
@@ -256,7 +254,7 @@ fn update_entity_pieces(
             .nth(0)
             .unwrap();
 
-        if p != new_piece {
+        if p.x != new_piece.x || p.y != new_piece.y {
             commands.entity(e).insert(*new_piece);
             event_piece_move.send(EventPieceMove(e));
         }
@@ -265,13 +263,13 @@ fn update_entity_pieces(
 
 pub fn create_pieces(
     mut commands: Commands,
-    mut game: ResMut<game::Game>,
+    game: Res<game::Game>,
     asset_server: Res<AssetServer>,
     square_materials: Res<materials::Materials>,
 ) {
     let cp_handle = asset_server.load("microsoft.glb#Mesh0/Primitive0");
 
-    for piece in game.state.pieces.iter_mut() {
+    for piece in game.state.pieces.iter() {
         let bundle = PbrBundle {
             mesh: cp_handle.clone(),
             material: match piece.color {
@@ -315,7 +313,7 @@ fn event_piece_moved(
         commands.entity(entity).insert(Animator::new(
             EaseFunction::QuadraticInOut,
             TweeningType::Once {
-                duration: Duration::from_millis(800),
+                duration: Duration::from_millis(600),
             },
             animations::TransformPositionWithYJumpLens {
                 start: transform.translation,
@@ -350,16 +348,6 @@ fn highlight_piece(
 // Plugins
 // ---
 
-pub struct PiecesPlugin;
-impl Plugin for PiecesPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(create_pieces.system())
-            .add_plugin(TweeningPlugin)
-            .add_system(highlight_piece.system())
-            .add_system(event_piece_moved.system());
-    }
-}
-
 pub struct BoardPlugin;
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
@@ -372,5 +360,15 @@ impl Plugin for BoardPlugin {
             .add_system(check_game_termination)
             .add_event::<EventPieceMove>()
             .add_plugin(PiecesPlugin);
+    }
+}
+
+pub struct PiecesPlugin;
+impl Plugin for PiecesPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(create_pieces.system())
+            .add_plugin(TweeningPlugin)
+            .add_system(highlight_piece.system())
+            .add_system(event_piece_moved.system());
     }
 }
