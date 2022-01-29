@@ -8,6 +8,7 @@ const CHAIN_LIMIT: u8 = 10;
 pub enum GameTermination {
     White,
     Black,
+    Draw,
     WhiteMoveLimit,
     BlackMoveLimit,
     Unterminated,
@@ -304,8 +305,10 @@ impl Game {
         if self.state.turn.turn_count >= MOVE_LIMIT {
             if number_of_whites > number_of_blacks {
                 return GameTermination::White;
-            } else {
+            } else if number_of_whites < number_of_blacks {
                 return GameTermination::Black;
+            } else {
+                return GameTermination::Draw;
             }
         }
 

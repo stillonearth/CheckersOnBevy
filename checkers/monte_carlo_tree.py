@@ -323,7 +323,7 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
 
 
 def state_to_board(state):
-    board = np.zeros((5+18, 8, 8))
+    board = np.zeros((5, 8, 8))
     for piece in state['pieces']:
         if piece['color'] == "Black":
             board[0, 7-piece['x'], piece['y']] = 1
@@ -331,10 +331,6 @@ def state_to_board(state):
             board[1, 7-piece['x'], piece['y']] = 1
         board[2, 7-piece['x'], piece['y']] = piece['id']
         board[3] = 1 if state['turn']['color'] == "Black" else 0
-
-    for i in range(0, 18):
-        for p in state['moveset'][i]:
-            board[5+i, 7-p[0], p[1]] = 1
 
     return board
 

@@ -50,6 +50,7 @@ impl CheckersEnv {
             reward: match termination {
                 game::GameTermination::Unterminated => 0,
                 game::GameTermination::Black => 10,
+                game::GameTermination::Draw => 0,
                 game::GameTermination::White => -10,
                 game::GameTermination::BlackMoveLimit => 5,
                 game::GameTermination::WhiteMoveLimit => -5,
