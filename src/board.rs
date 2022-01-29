@@ -225,12 +225,12 @@ fn event_square_selected(
 fn check_game_termination(game: Res<game::Game>, mut event_app_exit: ResMut<Events<AppExit>>) {
     match game.check_termination() {
         game::GameTermination::Black | game::GameTermination::BlackMoveLimit => {
-            println!("Black won! Thanks for playing!");
-            event_app_exit.send(AppExit);
+            // println!("Black won! Thanks for playing!");
+            // event_app_exit.send(AppExit);
         }
         game::GameTermination::White | game::GameTermination::WhiteMoveLimit => {
-            println!("White won! Thanks for playing!");
-            event_app_exit.send(AppExit);
+            // println!("White won! Thanks for playing!");
+            // event_app_exit.send(AppExit);
         }
         _ => {}
     }
@@ -313,7 +313,7 @@ fn event_piece_moved(
         commands.entity(entity).insert(Animator::new(
             EaseFunction::QuadraticInOut,
             TweeningType::Once {
-                duration: Duration::from_millis(600),
+                duration: Duration::from_millis(20),
             },
             animations::TransformPositionWithYJumpLens {
                 start: transform.translation,

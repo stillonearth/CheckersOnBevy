@@ -35,16 +35,13 @@ class Env:
         return state
 
     def step(self, action):
-        response = self.stub.Action(environment_pb2.StepRequest(action=json.dumps(action)))
-        step = json.loads(response.json)
+        response = self.stub.Step(environment_pb2.StepRequest(action=json.dumps(action)))
+        state = json.loads(response.json)
 
-        board = state_to_board(step.state)
-        if np.abs(step.reward) == 10:
-            board[4] = 1
-
-        return step
+        return state['obs'], state['reward'], state['is_done'], {}
 
     def current_state(self):
         response = self.stub.CurrentState(environment_pb2.CurrentStateRequest())
         state = json.loads(response.json)
         return state
+        

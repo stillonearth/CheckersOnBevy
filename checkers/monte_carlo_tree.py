@@ -11,6 +11,9 @@ MCTS_C = 1.0
 LR = 3e-4
 
 
+# def move_to_action(piece, position):
+#     piece = 
+
 class RandomPlayTree:
     """
     Random Play Tree (RPT) plays a game randomly. Base class for Monte Carlo Tree (MCT).
@@ -35,11 +38,13 @@ class RandomPlayTree:
             (moves, probs): possible moves and their probabilities
         """
         possible_moves = node.possible_moves()
-        if len(possible_moves) == 0:
-            return [], []
+
+        coords = np.argwhere(possible_moves).tolist()
+        if len(coords) == 0:
+            return None, 0.0
         
-        index = np.random.choice(len(possible_moves))
-        return tuple(possible_moves[index]), 1./len(possible_moves)
+        index = np.random.choice(len(coords))
+        return tuple(coords[index]), 1./len(coords)
     
     def find_node(self, uuid):
         """Find tree node by UUID
@@ -69,8 +74,18 @@ class RandomPlayTree:
             Node: new node
         """
         # Reset environment to node's state. Useful in MCTS unroll situation.
-        self.env.reset(state=node.state)
-        state, _reward, done, _info = self.env.step(move)
+        self.env.reset(state=node.original_state)
+
+        move = {
+            'piece': node.get_piece_by_coord(move[0], move[1]),
+            'square': {
+                'x': move[2],
+                'y': move[3],
+            }
+        }
+
+        state, reward, done, _info = self.env.step(move)
+
         existing_nodes = list(filter(lambda n: n.move == move, node.children))
         
         # Whether this node has been already visited before
@@ -81,7 +96,7 @@ class RandomPlayTree:
             new_node = Node(node, state, move, prob)
             node.add_child(new_node)
 
-        return new_node
+        return new_node, reward, done
 
     def simulate(self, node):
         """Simulation is MCTS is a sequence of moves that starts in current node and ends in terminal node. 
@@ -95,32 +110,39 @@ class RandomPlayTree:
         """
         current_node = node
         
+        
         while True:
             move, prob = self.pick_move(current_node) 
+
             if current_node.is_terminal() or (move is None):
                 break
 
-            current_node = self.move(current_node, move, prob)
+            current_node, reward, done = self.move(current_node, move, prob)
+
+            if done:
+                break
         
-        return current_node
+        return current_node, reward
 
-
-"""Random Play Tree plays go game randomly. Base class for Monte Carlo Tree."""
-class MonteCarloPlayTree(RandomPlayTree):
-
-    """
-    Return node score (who's winning):
-     1 - black
-     0 - draw
-    -1 - white
-    """
     def evaluate_node(self, node):
+        """
+        Return node score (who's winning):
+        
+        Parameters:
+            node (Node): a node to evaluate
+
+        Returns:
+            1 - black
+            0 - draw
+            -1 - white
+        """
         self.env.reset(state=node.state)
         return self.env.get_winning()
 
-    """Pick next move"""
+class MonteCarloPlayTree(RandomPlayTree):
+    
     def pick_move(self, node):
-
+        """Pick next move"""
         for _ in range(MCTS_N_SIMULATIONS):
             leaf = self.traverse(node)  
             terminal_node = self.rollout(leaf, 0)
@@ -177,24 +199,25 @@ class MonteCarloPlayTree(RandomPlayTree):
             return
         self.backpropagate(node.parent, result)
 
-    """
-    UCT is a core of MCTS. It allows us to choose next node among visited nodes.
-    
-    Q_v/N_v                               - exploitation component (favors nodes that were winning)
-    torch.sqrt(torch.log(N_v_parent)/N_v) - exploration component (favors node that weren't visited)
-    c                                     - tradeoff
-    
-    In competetive games Q is always computed relative to player who moves.
 
-    Parameters
-	----------
-    player: int
-         1 for blacks
-        -1 for whites
-    c: float
-        Constant for exploration/exploitation tradeoff
-    """
     def uct(self, node, c=MCTS_C):
+        """
+        UCT is a core of MCTS. It allows us to choose next node among visited nodes.
+        
+        Q_v/N_v                               - exploitation component (favors nodes that were winning)
+        torch.sqrt(torch.log(N_v_parent)/N_v) - exploration component (favors node that weren't visited)
+        c                                     - tradeoff
+        
+        In competetive games Q is always computed relative to player who moves.
+
+        Parameters
+        ----------
+        player: int
+            1 for blacks
+            -1 for whites
+        c: float
+            Constant for exploration/exploitation tradeoff
+        """
         if node.current_player() == 1:
             Q_v = node.q_black
         else:
@@ -299,15 +322,37 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             print("Iteration #", i, " loss:", loss)
 
 
+def state_to_board(state):
+    board = np.zeros((5+18, 8, 8))
+    for piece in state['pieces']:
+        if piece['color'] == "Black":
+            board[0, 7-piece['x'], piece['y']] = 1
+        else: 
+            board[1, 7-piece['x'], piece['y']] = 1
+        board[2, 7-piece['x'], piece['y']] = piece['id']
+        board[3] = 1 if state['turn']['color'] == "Black" else 0
+
+    for i in range(0, 18):
+        for p in state['moveset'][i]:
+            board[5+i, 7-p[0], p[1]] = 1
+
+    return board
+
+
 """Game Tree Node"""
 class Node:
     
-    def __init__(self, parent, state, move, prob):
+    def __init__(self, parent, original_state, move, prob):
         self.uuid = uuid.uuid1()
         self.parent = parent
         self.children = []
+        
         # State
-        self.state = state
+        # Keeping ndarray and original object
+        # This probably consumes too much memory
+        self.original_state = original_state
+        self.state = state_to_board(original_state)
+
         # MCT node properties
         self.number_of_visits = 0
         self.q_black = 0
@@ -334,6 +379,7 @@ class Node:
         
     """
     def prepared_game_state(self, player=None):
+        """Prepares checkers game state to numpy ndarray"""
 
         if player == None:
             player = self.current_player()
@@ -343,6 +389,17 @@ class Node:
         else:
             return self.whites() - self.blacks()
 
+    def get_piece_by_id(self, piece_id):
+        return next(
+            filter(lambda p: p['id'] == piece_id, 
+                self.original_state['pieces']
+            ))
+
+    def get_piece_by_coord(self, x, y):
+        return next(
+            filter(lambda p: p['x'] == x and p['y'] == y, 
+                self.original_state['pieces']
+            ))
 
     """White figures on board"""
     def whites(self):
@@ -354,29 +411,43 @@ class Node:
 
     """Return 1 if current player plays black, and -1 for whites"""
     def current_player(self):
-        if np.any(self.state[2]):
+        if np.any(self.state[3]):
             return 1
         return 0
-
-    """List of possible next moves"""
+    
     def possible_moves(self, player=None):
-        if player == None:
-            player = self.current_player()
-        moveset = {}
+        """List of possible next moves"""
+        coords = []
         for piece_id in range(0, 18):
-            piece_moveset = np.argwhere(self.state[5+piece_id]).tolist()
-            if len(piece_moveset) > 0:
-                moveset[piece_id] = piece_moveset
-        return moveset
+            piece = self.get_piece_by_id(piece_id+1)
+            
+            for move in self.original_state['moveset'][piece_id]:
+                coords.append((piece['x'], piece['y'], move[0], move[1]))
 
-    """Return list of possible next moves as int mask"""
+        moves = np.zeros((8, 8, 8, 8))
+        for c in coords:
+            moves[c] = 1
+        
+        mask = self.possible_moves_mask(player)
+        return moves * mask
+
     def possible_moves_mask(self, player=None):
+        """Return list of possible next moves as int mask"""
         if player == None:
             player = self.current_player()
 
-        if player == 1:
-            return self.blacks()
-        return self.whites()
+        coords = []
+        for piece_id in range(0, 18):
+            piece = self.get_piece_by_id(piece_id+1)
+
+            if (piece['color'] == "White" and player == 0) or (piece['color'] == "Black" and player == 1):
+                coords.append((piece['x'], piece['y']))
+
+        moves = np.zeros((8, 8, 8, 8))
+        for c in coords:
+            moves[c] = 1
+
+        return moves
 
     """How far node from root"""
     def depth(self):
