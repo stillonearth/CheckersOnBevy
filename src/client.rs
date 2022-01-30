@@ -76,7 +76,11 @@ fn sync_game_state(
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grpc_client = EnvironmentClient::connect("http://[::1]:50051").await?;
 
-    let game = game::Game::new();
+    let mut game = game::Game::new();
+
+    let state = fetch_game_state(&mut grpc_client.clone());
+    game.state = state;
+
     let mut app = bevy_app::create_bevy_app(game);
     let pool = TaskPoolBuilder::new()
         .thread_name("Busy Behavior ThreadPool".to_string())
@@ -85,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app.insert_resource(grpc_client);
     app.insert_resource(pool);
-    app.insert_resource(StateUpdateTimer(Timer::from_seconds(1.0, true)));
+    app.insert_resource(StateUpdateTimer(Timer::from_seconds(0.01, true)));
     app.add_system(sync_game_state);
     app.run();
 

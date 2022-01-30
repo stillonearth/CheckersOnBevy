@@ -1,4 +1,5 @@
 use bevy::ecs::event::*;
+use bevy::ecs::query::QueryIter;
 use bevy::pbr::*;
 use bevy::{app::AppExit, prelude::*};
 use bevy_mod_picking::*;
@@ -63,7 +64,7 @@ fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Op
 
 fn find_piece_by_square(
     square: game::Square,
-    pieces_query: &Query<(Entity, &mut game::Piece)>,
+    pieces_query: &Query<(Entity, &game::Piece)>,
 ) -> (Option<Entity>, Option<game::Piece>) {
     match pieces_query
         .iter()
@@ -82,14 +83,14 @@ fn find_piece_by_square(
 
 fn find_piece_by_entity(
     entity: Option<Entity>,
-    mut pieces_query: Query<(Entity, &mut game::Piece)>,
+    pieces_query: &Query<(Entity, &game::Piece)>,
 ) -> (Option<Entity>, Option<game::Piece>) {
     if entity == None {
         return (None, None);
     }
 
     match pieces_query
-        .iter_mut()
+        .iter()
         .filter(|(e, _)| e == &entity.unwrap())
         .nth(0)
     {
@@ -124,6 +125,11 @@ fn find_square_by_entity(
         // Square doesn't hold piece
         _ => return (None, None),
     };
+}
+
+pub fn piece_translation(piece: game::Piece) -> Vec3 {
+    let v1 = Vec3::new(piece.x as f32, 0.1, piece.y as f32);
+    return v1;
 }
 
 // ---
@@ -168,7 +174,7 @@ fn click_square(
     mut selected_piece: ResMut<SelectedPiece>,
     // queries
     square_query: Query<(Entity, &game::Square)>,
-    pieces_query: Query<(Entity, &mut game::Piece)>,
+    pieces_query: Query<(Entity, &game::Piece)>,
 ) {
     let (_, new_square) = find_square_by_entity(selected_square.entity, &square_query);
 
@@ -177,7 +183,7 @@ fn click_square(
     }
 
     let (new_entity, new_piece) = find_piece_by_square(new_square.unwrap(), &pieces_query);
-    let (old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, pieces_query);
+    let (_old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, &pieces_query);
 
     // Nothing has been selected before
     if selected_piece.entity == None
@@ -200,6 +206,7 @@ fn click_square(
     // Check whether game move was valid
     match move_type {
         game::MoveType::Invalid => {
+            // chain move allowed for same piece
             if new_piece != None
                 && new_piece.unwrap().color == turn_color
                 && game.state.turn.chain_count == 0
@@ -246,6 +253,10 @@ fn update_entity_pieces(
     query: Query<(Entity, &game::Piece)>,
 ) {
     for (e, p) in query.iter() {
+        if !game.is_changed() {
+            return;
+        }
+
         let new_piece = game
             .state
             .pieces
@@ -285,7 +296,7 @@ pub fn create_pieces(
 
 pub fn model_transform(piece: game::Piece) -> Transform {
     // Translation
-    let mut transform = Transform::from_translation(piece.translation());
+    let mut transform = Transform::from_translation(piece_translation(piece));
 
     // Rotation
     transform.rotate(Quat::from_rotation_x(-1.57));
@@ -313,11 +324,11 @@ fn event_piece_moved(
         commands.entity(entity).insert(Animator::new(
             EaseFunction::QuadraticInOut,
             TweeningType::Once {
-                duration: Duration::from_millis(20),
+                duration: Duration::from_millis(500),
             },
             animations::TransformPositionWithYJumpLens {
                 start: transform.translation,
-                end: piece.translation(),
+                end: piece_translation(*piece),
             },
         ));
     }
@@ -354,9 +365,9 @@ impl Plugin for BoardPlugin {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
             .add_startup_system(create_board)
-            .add_system(update_entity_pieces)
+            .add_system(click_square.label("input"))
+            .add_system(update_entity_pieces.after("input"))
             .add_system(event_square_selected)
-            .add_system(click_square)
             .add_system(check_game_termination)
             .add_event::<EventPieceMove>()
             .add_plugin(PiecesPlugin);

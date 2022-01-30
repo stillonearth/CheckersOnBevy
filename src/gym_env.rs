@@ -36,13 +36,20 @@ impl CheckersEnv {
         if state == None {
             self.game.state = self.initial_state.clone();
         } else {
-            self.game.state = state.unwrap();
+            self.game.state = state.unwrap().clone();
         }
         return self.game.state.clone();
     }
 
     pub fn step(&mut self, mut action: Action) -> Step {
         let (move_type, state, termination) = self.game.step(&mut action.piece, action.square);
+
+        match move_type {
+            game::MoveType::Invalid => {
+                println!("invalid move");
+            }
+            _ => {}
+        }
 
         return Step {
             obs: state.clone(),

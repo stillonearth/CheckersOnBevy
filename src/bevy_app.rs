@@ -11,7 +11,7 @@ use crate::game;
 use crate::materials;
 use crate::ui;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 pub fn create_bevy_app(game: game::Game) -> App {
     let mut app = App::new();

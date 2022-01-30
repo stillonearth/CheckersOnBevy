@@ -1,6 +1,6 @@
 import uuid
 import numpy as np
-import gym
+import time
 import torch.optim as optim
 import torch
 
@@ -39,12 +39,13 @@ class RandomPlayTree:
         """
         possible_moves = node.possible_moves()
 
-        coords = np.argwhere(possible_moves).tolist()
-        if len(coords) == 0:
+        print(possible_moves)
+
+        if len(possible_moves) == 0:
             return None, 0.0
         
-        index = np.random.choice(len(coords))
-        return tuple(coords[index]), 1./len(coords)
+        index = np.random.choice(len(possible_moves))
+        return tuple(possible_moves[index]), np.ones(len(possible_moves)) / len(possible_moves)
     
     def find_node(self, uuid):
         """Find tree node by UUID
@@ -67,16 +68,15 @@ class RandomPlayTree:
         
         Parameters:
             node (Node): game tree node
-            move (?): move
+            move (tuple): move
             prob (float32): move probability
         
         Returns:
             Node: new node
         """
         # Reset environment to node's state. Useful in MCTS unroll situation.
-        self.env.reset(state=node.original_state)
-
-        move = {
+        # self.env.reset()
+        action = {
             'piece': node.get_piece_by_coord(move[0], move[1]),
             'square': {
                 'x': move[2],
@@ -84,7 +84,7 @@ class RandomPlayTree:
             }
         }
 
-        state, reward, done, _info = self.env.step(move)
+        state, reward, done, _info = self.env.step(action)
 
         existing_nodes = list(filter(lambda n: n.move == move, node.children))
         
@@ -94,6 +94,7 @@ class RandomPlayTree:
             new_node.prob = prob
         else:
             new_node = Node(node, state, move, prob)
+            new_node.state[3] = int(done)
             node.add_child(new_node)
 
         return new_node, reward, done
@@ -109,35 +110,25 @@ class RandomPlayTree:
             Node: terminal node
         """
         current_node = node
-        
-        
+        reward = 0
+
         while True:
             move, prob = self.pick_move(current_node) 
+            
+            if current_node.is_terminal():
+                break           
 
-            if current_node.is_terminal() or (move is None):
-                break
+            print(move)
+            print(current_node.original_state['turn']['color'], current_node.original_state['turn']['chain_count'])
+            current_node, r, done = self.move(current_node, move, prob)            
 
-            current_node, reward, done = self.move(current_node, move, prob)
+            reward += r # cummulative reward
 
             if done:
                 break
         
         return current_node, reward
 
-    def evaluate_node(self, node):
-        """
-        Return node score (who's winning):
-        
-        Parameters:
-            node (Node): a node to evaluate
-
-        Returns:
-            1 - black
-            0 - draw
-            -1 - white
-        """
-        self.env.reset(state=node.state)
-        return self.env.get_winning()
 
 class MonteCarloPlayTree(RandomPlayTree):
     
@@ -323,14 +314,13 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
 
 
 def state_to_board(state):
-    board = np.zeros((5, 8, 8))
+    board = np.zeros((4, 8, 8))
     for piece in state['pieces']:
         if piece['color'] == "Black":
-            board[0, 7-piece['x'], piece['y']] = 1
+            board[0, piece['x'], piece['y']] = 1
         else: 
-            board[1, 7-piece['x'], piece['y']] = 1
-        board[2, 7-piece['x'], piece['y']] = piece['id']
-        board[3] = 1 if state['turn']['color'] == "Black" else 0
+            board[1, piece['x'], piece['y']] = 1
+        board[2] = 1 if state['turn']['color'] == "Black" else 0
 
     return board
 
@@ -338,7 +328,7 @@ def state_to_board(state):
 """Game Tree Node"""
 class Node:
     
-    def __init__(self, parent, original_state, move, prob):
+    def __init__(self, parent, original_state, move, prob=0.0):
         self.uuid = uuid.uuid1()
         self.parent = parent
         self.children = []
@@ -354,28 +344,27 @@ class Node:
         self.q_black = 0
         self.q_white = 0
         # Traversal properties
-        self.prob = 0
+        self.prob = prob
         self.move = move
         
     def add_child(self, node):
         self.children.append(node)
 
-    """
-    Prepare game state X from perspective of current player
-    [
-        [ 1 -1 -1 ]
-        [ 1  0  0 ]
-        [ 0  0 -1 ]
-    ]
-
-    
-    Where  
-        1:  current player
-        -1: opposing player
-        
-    """
     def prepared_game_state(self, player=None):
-        """Prepares checkers game state to numpy ndarray"""
+        """
+        Prepare game state X from perspective of current player
+        [
+            [ 1 -1 -1 ]
+            [ 1  0  0 ]
+            [ 0  0 -1 ]
+        ]
+
+        
+        Where  
+            1:  current player
+            -1: opposing player
+            
+        """
 
         if player == None:
             player = self.current_player()
@@ -407,7 +396,7 @@ class Node:
 
     """Return 1 if current player plays black, and -1 for whites"""
     def current_player(self):
-        if np.any(self.state[3]):
+        if self.original_state['turn']['color'] == 'Black':
             return 1
         return 0
     
@@ -415,7 +404,7 @@ class Node:
         """List of possible next moves"""
         coords = []
         for piece_id in range(0, 18):
-            piece = self.get_piece_by_id(piece_id+1)
+            piece = self.get_piece_by_id(piece_id)
             
             for move in self.original_state['moveset'][piece_id]:
                 coords.append((piece['x'], piece['y'], move[0], move[1]))
@@ -425,7 +414,9 @@ class Node:
             moves[c] = 1
         
         mask = self.possible_moves_mask(player)
-        return moves * mask
+        moves = moves * mask
+
+        return np.argwhere(moves).tolist()
 
     def possible_moves_mask(self, player=None):
         """Return list of possible next moves as int mask"""
@@ -434,9 +425,9 @@ class Node:
 
         coords = []
         for piece_id in range(0, 18):
-            piece = self.get_piece_by_id(piece_id+1)
+            piece = self.get_piece_by_id(piece_id)
 
-            if (piece['color'] == "White" and player == 0) or (piece['color'] == "Black" and player == 1):
+            if (piece['color'] == "Black" and player == 1) or (piece['color'] == "White" and player == 0):
                 coords.append((piece['x'], piece['y']))
 
         moves = np.zeros((8, 8, 8, 8))
@@ -451,11 +442,11 @@ class Node:
 
     """Whether node is last in the game"""        
     def is_terminal(self):
-        return len(self.possible_moves()) == 0 or np.any(self.state[4])
+        return np.any(self.state[3])
 
     """Whether node all of node's children were expanded"""
     def is_fully_expanded(self):
-        return len(self.possible_unexplored_moves()) == 0
+        return len(self.possible_unexplored_moves()) == 0 or self.is_terminal()
 
     """Pick child node with highest UCT"""
     def best_uct(self, uct_func):

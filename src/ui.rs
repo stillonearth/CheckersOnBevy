@@ -13,9 +13,9 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
     let text = Text::with_section(
         "",
         TextStyle {
-            font_size: 25.0,
+            font_size: 35.0,
             font: asset_server.load("Roboto-Regular.ttf"),
-            color: Color::rgb(0.8, 0.8, 0.8),
+            color: Color::rgb(1.0, 0.2, 0.2),
         },
         TextAlignment {
             horizontal: HorizontalAlign::Left,
@@ -118,7 +118,7 @@ fn next_move_text_update(game: Res<game::Game>, mut query: Query<(&mut Text, &Ne
 
     for (mut text, _tag) in query.iter_mut() {
         let str = format!(
-            "Checkers with Rust, Python + OpenAI Agent\n\nMove: {}  Turn: {}",
+            "Checkers with Rust, Python + AI Agent with AlphaZero\nMove: {}  Turn: {}",
             match game.state.turn.color {
                 game::Color::White => "White",
                 game::Color::Black => "Black",

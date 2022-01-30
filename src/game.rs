@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-const MOVE_LIMIT: u8 = 80;
-const CHAIN_LIMIT: u8 = 10;
+const MOVE_LIMIT: u8 = 40;
+const CHAIN_LIMIT: u8 = 5;
 
 #[derive(Debug, Serialize)]
 pub enum GameTermination {
@@ -28,6 +28,7 @@ pub struct PlayerTurn {
     pub color: Color,
     pub turn_count: u8,
     pub chain_count: u8,
+    pub chain_piece_id: i16,
 }
 
 impl Default for PlayerTurn {
@@ -36,6 +37,7 @@ impl Default for PlayerTurn {
             color: Color::White,
             turn_count: 0,
             chain_count: 0,
+            chain_piece_id: 0,
         }
     }
 }
@@ -48,6 +50,7 @@ impl PlayerTurn {
         };
         self.turn_count += 1;
         self.chain_count = 0;
+        self.chain_piece_id = -1;
     }
 }
 
@@ -60,23 +63,9 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn get_color(&self) -> String {
-        match self.color {
-            Color::Black => "black".to_string(),
-            Color::White => "white".to_string(),
-        }
-    }
-}
-
-impl Piece {
     pub fn move_to_square(&mut self, square: Square) {
         self.x = square.x;
         self.y = square.y;
-    }
-
-    pub fn translation(&self) -> Vec3 {
-        let v1 = Vec3::new(self.x as f32, 0.1, self.y as f32);
-        return v1;
     }
 
     pub fn is_move_valid(&self, new_square: Square, pieces: &Vec<Piece>) -> MoveType {
@@ -84,7 +73,7 @@ impl Piece {
             .iter()
             .filter(|p| p.x == new_square.x && p.y == new_square.y)
             .count()
-            == 1;
+            > 0;
 
         if is_square_occopied {
             return MoveType::Invalid;
@@ -218,7 +207,7 @@ pub struct Game {
 impl Default for Game {
     fn default() -> Self {
         let mut pieces: Vec<Piece> = Vec::new();
-        let mut i: u8 = 1;
+        let mut i: u8 = 0;
 
         for (x, y) in white_start_positions() {
             pieces.push(Piece {
@@ -258,6 +247,7 @@ impl Default for Game {
                     color: Color::White,
                     chain_count: 0,
                     turn_count: 0,
+                    chain_piece_id: -1,
                 },
             },
         };
@@ -322,16 +312,18 @@ impl Game {
     ) -> (MoveType, &GameState, GameTermination) {
         let mut move_type: MoveType = MoveType::Invalid;
 
-        if self.state.turn.chain_count > CHAIN_LIMIT {
+        if self.state.turn.chain_count >= CHAIN_LIMIT {
             self.state.turn.change();
             return (MoveType::Regular, &self.state, self.check_termination());
         }
 
         match piece.is_move_valid(square, &self.state.pieces) {
             MoveType::JumpOver => {
+                println!("jump over");
                 piece.move_to_square(square);
                 move_type = MoveType::JumpOver;
                 self.state.turn.chain_count += 1;
+                self.state.turn.chain_piece_id = piece.id as i16;
             }
             MoveType::Regular => {
                 piece.move_to_square(square);
@@ -355,14 +347,20 @@ impl Game {
         let mut moveset: [Vec<Position>; 18] = Default::default();
 
         for i in 0..18 {
-            let p = self.state.pieces.iter().filter(|p| p.id == i).nth(0);
+            let p = self
+                .state
+                .pieces
+                .iter()
+                .filter(|p| p.id == i)
+                .nth(0)
+                .unwrap();
 
-            if p == None {
+            if self.state.turn.chain_count > 0 && (p.id as i16) != self.state.turn.chain_piece_id {
                 continue;
             }
 
             for s in self.squares.iter() {
-                match p.unwrap().is_move_valid(*s, &self.state.pieces) {
+                match p.is_move_valid(*s, &self.state.pieces) {
                     MoveType::JumpOver | MoveType::Regular => {
                         let position: Position = (s.x, s.y);
                         moveset[i as usize].push(position);
