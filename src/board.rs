@@ -198,17 +198,14 @@ fn click_square(
         return;
     }
 
-    let piece = &mut old_piece.unwrap();
-    let turn_color = game.state.turn.color;
-
-    let (move_type, _new_state, _termination) = game.step(piece, new_square.unwrap());
+    let (move_type, _new_state, _termination) = game.step(old_piece, new_square);
 
     // Check whether game move was valid
     match move_type {
         game::MoveType::Invalid => {
             // chain move allowed for same piece
             if new_piece != None
-                && new_piece.unwrap().color == turn_color
+                && new_piece.unwrap().color == game.state.turn.color
                 && game.state.turn.chain_count == 0
             {
                 selected_piece.entity = new_entity;
@@ -324,7 +321,7 @@ fn event_piece_moved(
         commands.entity(entity).insert(Animator::new(
             EaseFunction::QuadraticInOut,
             TweeningType::Once {
-                duration: Duration::from_millis(500),
+                duration: Duration::from_millis(50),
             },
             animations::TransformPositionWithYJumpLens {
                 start: transform.translation,
@@ -341,9 +338,6 @@ fn highlight_piece(
     square_materials: Res<materials::Materials>,
     mut query: Query<(Entity, &game::Piece, &mut Handle<StandardMaterial>)>,
 ) {
-    // info!("game {:?}", game.state.turn.color);
-    // info!("turn {:?}", turn.color);
-
     for (entity, piece, mut material) in query.iter_mut() {
         if Some(entity) == selected_piece.entity {
             *material = square_materials.selected_color.clone();

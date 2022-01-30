@@ -307,19 +307,28 @@ impl Game {
 
     pub fn step(
         &mut self,
-        piece: &mut Piece,
-        square: Square,
+        piece: Option<Piece>,
+        square: Option<Square>,
     ) -> (MoveType, &GameState, GameTermination) {
         let mut move_type: MoveType = MoveType::Invalid;
 
+        // pass turn
+        if piece.is_none() || square.is_none() {
+            self.state.turn.change();
+            return (MoveType::Regular, &self.state, self.check_termination());
+        }
+
+        // chain limit met
         if self.state.turn.chain_count >= CHAIN_LIMIT {
             self.state.turn.change();
             return (MoveType::Regular, &self.state, self.check_termination());
         }
 
+        let mut piece = piece.unwrap();
+        let square = square.unwrap();
+
         match piece.is_move_valid(square, &self.state.pieces) {
             MoveType::JumpOver => {
-                println!("jump over");
                 piece.move_to_square(square);
                 move_type = MoveType::JumpOver;
                 self.state.turn.chain_count += 1;

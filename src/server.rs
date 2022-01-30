@@ -47,7 +47,9 @@ impl Environment for MyEnvironment {
         let action: gym_env::Action = serde_json::from_str(&action_json).unwrap();
 
         let mut env = self.gym_env.lock().unwrap();
-        let step = env.step(action);
+        let mut step = env.step(action);
+
+        step.obs.moveset = env.game.possible_moves();
 
         let reply = environment::JsonReply {
             json: serde_json::to_string(&step).unwrap(),

@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Action {
-    pub piece: game::Piece,
-    pub square: game::Square,
+    pub piece: Option<game::Piece>,
+    pub square: Option<game::Square>,
 }
 
 #[derive(Debug, Serialize)]
@@ -13,7 +13,6 @@ pub struct Step {
     pub action: Action,
     pub reward: i8,
     pub is_done: bool,
-    // pub is_valid: bool,
 }
 
 // An OpenAI Gym session.
@@ -42,14 +41,7 @@ impl CheckersEnv {
     }
 
     pub fn step(&mut self, mut action: Action) -> Step {
-        let (move_type, state, termination) = self.game.step(&mut action.piece, action.square);
-
-        match move_type {
-            game::MoveType::Invalid => {
-                println!("invalid move");
-            }
-            _ => {}
-        }
+        let (_move_type, state, termination) = self.game.step(action.piece, action.square);
 
         return Step {
             obs: state.clone(),
@@ -66,10 +58,6 @@ impl CheckersEnv {
                 game::GameTermination::Unterminated => false,
                 _ => true,
             },
-            // is_valid: match move_type {
-            //     game::MoveType::Invalid => false,
-            //     _ => true,
-            // },
         };
     }
 }
