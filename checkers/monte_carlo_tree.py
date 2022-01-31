@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch
 
 
-MCTS_N_SIMULATIONS = 10
+MCTS_N_SIMULATIONS = 3
 MCTS_ROLLOUT_DEPTH = 10
 MCTS_C = np.sqrt(2.0)
 LR = 3e-4
@@ -70,7 +70,7 @@ class RandomPlayTree:
             Node: new node
         """
         # Reset environment to node's state. Useful in MCTS unroll situation.
-        self.env.reset(node.original_state)
+        
         action = {
             'piece': node.get_piece_by_coord(move[0], move[1]),
             'square': {
@@ -79,6 +79,7 @@ class RandomPlayTree:
             }
         }
 
+        self.env.reset(node.original_state)
         state, reward, done, _info = self.env.step(action)
 
         existing_nodes = list(filter(lambda n: n.move == move, node.children))
@@ -119,34 +120,6 @@ class RandomPlayTree:
         
         return current_node
 
-def uct(node, c=MCTS_C):
-    """
-    UCT is a core of MCTS. It allows us to choose next node among visited nodes.
-    
-    Q_v/N_v                               - exploitation component (favors nodes that were winning)
-    torch.sqrt(torch.log(N_v_parent)/N_v) - exploration component (favors node that weren't visited)
-    c                                     - tradeoff
-    
-    In competetive games Q is always computed relative to player who moves.
-
-    Parameters
-    ----------
-    player: int
-        1 for blacks
-        -1 for whites
-    c: float
-        Constant for exploration/exploitation tradeoff
-    """
-
-    if node.current_player() == 1:
-        Q_v = node.q_black
-    else:
-        Q_v = node.q_white
-    N_v = node.number_of_visits + 1
-    N_v_parent = node.parent.number_of_visits + 1
-    
-    value = Q_v/N_v + c*np.sqrt(np.log(N_v_parent)/N_v) 
-    return value
 
 class MonteCarloPlayTree(RandomPlayTree):
 
@@ -156,18 +129,43 @@ class MonteCarloPlayTree(RandomPlayTree):
     def pick_move(self, node):
         """Pick next move"""
         
+        leaf = self.traverse(node)  
         for _ in range(MCTS_N_SIMULATIONS):
-            leaf = self.traverse(node)  
             terminal_node = self.rollout(leaf, 0)
             value = self.evaluate_node(terminal_node)
             self.backpropagate(leaf, value)
 
-        if node.is_terminal:
-            return None, None
-
         best_child = node.best_child()
 
         return best_child.move, best_child.prob
+
+    def uct(self, node, c=MCTS_C):
+        """
+        UCT is a core of MCTS. It allows us to choose next node among visited nodes.
+        
+        Q_v/N_v                               - exploitation component (favors nodes that were winning)
+        torch.sqrt(torch.log(N_v_parent)/N_v) - exploration component (favors node that weren't visited)
+        c                                     - tradeoff
+        
+        In competetive games Q is always computed relative to player who moves.
+
+        Parameters
+        ----------
+        player: int
+            1 for blacks
+            -1 for whites
+        c: float
+            Constant for exploration/exploitation tradeoff
+        """
+
+        if node.current_player() == 1:
+            Q_v = node.q_black
+        else:
+            Q_v = node.q_white
+        N_v = node.number_of_visits + 1
+        N_v_parent = node.parent.number_of_visits + 1
+        
+        return np.sum(Q_v/N_v + c*np.sqrt(np.log(N_v_parent)/N_v))
 
     def traverse(self, node):
         """
@@ -179,7 +177,7 @@ class MonteCarloPlayTree(RandomPlayTree):
             return node
 
         if node.is_fully_expanded():
-            return self.traverse(node.best_uct(uct))
+            return self.traverse(node.best_uct(self.uct))
 
         move, prob = self.traverse_policy(node)
         return self.move(node, move, prob)  
@@ -197,7 +195,7 @@ class MonteCarloPlayTree(RandomPlayTree):
         if depth > MCTS_ROLLOUT_DEPTH:
             return node
 
-        if node.is_fully_expanded():
+        if node.is_terminal:
             return node
 
         move, prob = self.rollout_policy(node)
@@ -238,19 +236,17 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
         state_tensor = torch.from_numpy(state).float().to(self.device).unsqueeze(0)
         possible_moves = node.possible_moves(raw=True)
         possible_moves_tensor = torch.from_numpy(possible_moves).to(self.device).unsqueeze(0)
-        prob, _ = self.actor_critic_network(state_tensor, possible_moves_tensor)
-        prob = prob.squeeze().cpu().detach().numpy()
+        probs_tensor, _ = self.actor_critic_network(state_tensor, possible_moves_tensor)
+        probs_tensor = probs_tensor.squeeze().cpu().detach().numpy()
 
-        mask = node.possible_moves_mask().astype(float)
+        table = probs_tensor / probs_tensor.sum()
+        moves = np.argwhere(table>0).tolist()
+        if len(moves) == 0:
+            return None, 1.0
+        probs = [probs_tensor[m[0], m[1], m[2], m[3]] for m in moves]
+        index = np.random.choice(np.arange(len(probs)), p=probs)
 
-        table = prob*mask
-        probs = table / table.sum()
-
-        options = np.argwhere(table!=np.nan).tolist()
-        index = np.random.choice(np.arange(self.board_size**4), p=probs.flatten())
-        move = options[index]
-        prob = table[move[0], move[1], move[2], move[3]]
-        return move, prob
+        return moves[index], probs[index]
 
     def uct(self, node, c=MCTS_C):
         N_v = node.number_of_visits + 1
@@ -258,8 +254,8 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
 
         # TODO: test
         V_current = self.estimate_node_value(node)
-        for child in node.children:
-            V_current -= self.estimate_node_value(child)
+        # for child in node.children:
+        # V_current -= self.estimate_node_value(child)
         
         result = V_current/N_v + c * np.sqrt(np.log(N_v_parent)/N_v) * node.prob
 
@@ -287,7 +283,7 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             print("Iteration #", i,)
             terminal_node = self.simulate(self.root_node)
             last_player = terminal_node.current_player()
-            winning_player = np.abs(self.evaluate_node(terminal_node) )
+            winning_player = np.sign(self.evaluate_node(terminal_node))
             if last_player == winning_player:
                 score = 1
             else:
@@ -376,8 +372,14 @@ class Node:
 
         if player == None:
             player = self.current_player()
-        
-        return self.blacks() - self.whites() if player == 1 else self.whites() - self.blacks()
+
+        # take advantage of game symmetry        
+        state = self.blacks() - self.whites() if player == 1 else self.whites() - self.blacks()
+
+        # if player == 1:
+        #     return np.flip(np.flip(state, 1), 0)
+
+        return state
 
     def get_piece_by_id(self, piece_id):
         return next(

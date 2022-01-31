@@ -40,7 +40,7 @@ impl CheckersEnv {
         return self.game.state.clone();
     }
 
-    pub fn step(&mut self, mut action: Action) -> Step {
+    pub fn step(&mut self, action: Action) -> Step {
         let (_move_type, state, termination) = self.game.step(action.piece, action.square);
 
         return Step {
