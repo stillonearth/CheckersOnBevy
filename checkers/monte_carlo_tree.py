@@ -5,8 +5,8 @@ import torch.optim as optim
 import torch
 
 
-MCTS_N_SIMULATIONS = 3
-MCTS_ROLLOUT_DEPTH = 10
+MCTS_N_SIMULATIONS = 10
+MCTS_ROLLOUT_DEPTH = 40
 MCTS_C = np.sqrt(2.0)
 LR = 3e-4
 
@@ -292,13 +292,9 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             trajectory = terminal_node.unroll()
             print("number of moves: ", len(trajectory), )
             states = np.array([node.prepared_game_state(terminal_node.current_player()) for node in trajectory])
-            # actions = np.array([node.action for node in trajectory])
-            # action_probs = np.array([node.prob for node in trajectory])
-            
             states_tensor = torch.from_numpy(states).float().to(self.device)
             possible_moves = np.array([node.possible_moves(raw=True) for node in trajectory])
             possible_moves_tensor = torch.from_numpy(possible_moves).to(self.device)
-            # action_prob_tensors = torch.from_numpy(action_probs).float().to(self.device)
             probs, values = self.actor_critic_network(states_tensor, possible_moves_tensor)
             # Loss function. Core of alpha-zero
             loss_term_1 = (values - score).pow(2) #- (probs * torch.log(probs)).sum()).sum()

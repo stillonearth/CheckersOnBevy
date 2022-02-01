@@ -7,13 +7,9 @@ use serde_json;
 
 use futures::executor;
 
-mod animations;
-mod bevy_app;
-mod board;
+mod bevy_frontend;
 mod game;
 mod gym_env;
-mod materials;
-mod ui;
 
 pub mod environment {
     tonic::include_proto!("environment");
@@ -44,8 +40,8 @@ fn push_game_state(
 }
 
 fn sync_game_state(
-    mut selected_square: ResMut<board::SelectedSquare>,
-    mut selected_piece: ResMut<board::SelectedPiece>,
+    mut selected_square: ResMut<bevy_frontend::SelectedSquare>,
+    mut selected_piece: ResMut<bevy_frontend::SelectedPiece>,
     time: Res<Time>,
     mut timer: ResMut<StateUpdateTimer>,
     mut game: ResMut<game::Game>,
@@ -81,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = fetch_game_state(&mut grpc_client.clone());
     game.state = state;
 
-    let mut app = bevy_app::create_bevy_app(game);
+    let mut app = bevy_frontend::create_bevy_app(game);
     let pool = TaskPoolBuilder::new()
         .thread_name("Busy Behavior ThreadPool".to_string())
         .num_threads(4)
