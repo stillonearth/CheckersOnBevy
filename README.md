@@ -10,7 +10,7 @@ February 2022
 
 This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch. 
 
-In the first part of this project we will implement a Checkers Ugolki game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust Environment.
+In the first part of this project we will implement a Checkers Ugolki game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust environment targeting Desktop (Windows, Linux) and Web (wasm).
 
 ### Project Goals
 
@@ -23,7 +23,9 @@ In the first part of this project we will implement a Checkers Ugolki game with 
 ### Technical Formulation of Problem 
 
 * Set up Rust development environment
-* Set up python development environment with PyTorch 1.10+ (CUDA support is desirable)
+* Set up Python development environment with PyTorch 1.10+ (CUDA support is desirable)
+
+***
 
 ## 1. Making Checkers Ugolki game with Bevy and Rust
 
@@ -45,13 +47,11 @@ CheckersOnBevy
 
 The reason is that we want our game logic be decoupled from a game front-end (Bevy application) and be accessible to other languages with gRPC API. Application can be run with Client-Server model or as a standalone one. ```checkers-server``` is also used in 2nd part of this project where we train a Neural Network to play the game.
 
-## 1.1 checkers-core
+## 1.1 🗀 checkers-core
 
 ```checkers-core``` contains game logic and bevy frontend. It does not contain any network functionality and can be compiled as Desktop (Windows, Linux), Mobile (Android, iOS) or Web Assembly target.
 
-## 1.1.1 Architecture
-
-### Game Rules
+### 1.1.1 Game Rules
 
 `game.rs` describes game rules. It contains following entities:
 
@@ -67,9 +67,9 @@ The reason is that we want our game logic be decoupled from a game front-end (Be
 
 This is pure Rust module, but ```Piece``` and ```Square``` are decorated with bevy's ```Component``` decorator which is needed for Entity-Component-System (ECS) pattern used in Bevy.
 
-### Front-End 
+### 1.1.2 Front-End 
 
-```bevy_frontend.rs``` implements Bevy application. 
+```bevy_frontend.rs``` implements Bevy application which is influenced by [1].
 
 Bevy uses ECS pattern to describe game logic. It suggests to organize logic in following manner:
 
@@ -142,7 +142,7 @@ In Bevy there is also notion on *Resources* which are similar to global variable
        `--button_system
 ```
 
-### OpenAI Gym Interface
+### 1.1.3 OpenAI Gym Interface
 
 [OpenAI Gym](https://gym.openai.com/) describes Environment interface in following way:
 
@@ -172,27 +172,78 @@ env.close()
 
 In part 2 of this project ```CheckersEnv``` is exposed as gRPC server and python client is implemented to communicate with it.
 
-### Exporting modules as a library
+### 1.1.4 Exporting modules as a library
 
-In order to use these modules in other projects they have to be exported in `lib.rs`:
+In order to use these modules in other projects they have to be exported via `lib.rs`:
 
-```rust
-pub mod bevy_frontend;
-pub mod game;
-pub mod gym_env;
-
-```
+***
 
 ## 2. Making OpenAI Gym Environment with Python and Rust
 
-### Architecture
+## 2.1 🗀 checkers-server
+
+We want our Python Gym environment to run simulation, correct it state and take screenshots. We could have wrapped entire application to [pyo3](https://github.com/PyO3/pyo3) but that would require running ```bevy_frontend``` on non-main thread, while communicating with ```gym_env``` which would share game state with bevy app. Unfortunately there are number of limitations limiting us from this path:
+
+1. Bevy frontend needs main thread for it's event loop
+2. Sharing game state with bevy app and environment is not straightforward due to Rust limitation on multiple mutable references to single variable
+
+Because of that ```checkers-server``` implements a gRPC server wrapping ```CheckersEnv```. It is [Tonic](https://github.com/hyperium/tonic) gRPC server which assumes that environment can be accessed simultaneously from multiple threads so ```CheckersEnv``` is wrapped in mutex in atomic reference counter ```Arc<Mutex<CheckersEnv>>```. 
+
+```proto/environment.proto``` describes service contract with [Protocol Buffers](https://developers.google.com/protocol-buffers/). We don't fully describe service fields because all responses are serialized to json entities from *§1.1.1 Game Rules* and *§1.1.3  OpenAI Gym Interface*. Note that production services should describe all fields in Protocol Buffers contracts.
+
+
+## 2.2 🗀 checkers-client
+
+A client that communicates with ```checkers-server```. You can run multiple instances — a multiplayer game. We also use it to visualize shared game state in OpenAI Gym Environment
+
+## 2.3 🗀 checkers-ai
+
+```env.py``` describes ```Env``` — a gRPC client that communicates with Rust gRPC server. This ```Env``` also implements OpenAI Gym Environment interface.
+
+***
 
 ## 3. Training AlphaZero to play Checkers Ugolki with PyTorch and Python
 
-### Mathematical Models
+Checkers is fully observable turn-based zero-sum game, which means:
+
+* **Fully Observable Game:** Game state is fully known to both players at any moment of the game
+* Players make turns in succession
+* **Zero-Sum Game:** When one player wins, other looses
+
+Monte-Carlo Search Tree is known method for solving such games. For games with higher dimensionality there is AlphaZero flavor which uses neural network(s) to improve computation efficiency and performance of Search Trees.
+
+### 3.1 Mathematical Models
+
+#### 3.1.1 Monte-Carlo Search Trees
+
+#### 3.1.2 AlphaZero
+
+### 3.2 Neural Networks
+
+Actions-Value model:
+
+***
 
 ## 4. Deploying to Production with TorchScript and Rust
 
+## 4.1 🗀 checkers-ai
+
+***
+
 ## Results
 
+### Training Results
+
+### Rust, Bevy and Torch 
+
+Subjective state of these instruments (Februrary 2022):
+
+* Rust & Bevy
+* PyTorch
+
+***
+
 ## References
+
+[1] Chess game in Rust using Bevy, guimcaballero, Nov 16th 2020, https://caballerocoll.com/blog/bevy-chess-tutorial/
+[2] Reimplementing Alpha-Zero for board game of Go, Sergei Surovtsev, December 2019, https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb

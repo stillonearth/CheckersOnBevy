@@ -2,7 +2,6 @@ import grpc
 import environment_pb2
 import environment_pb2_grpc
 import json
-import numpy as np
 
 
 class Env:
