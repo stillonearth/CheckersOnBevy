@@ -254,7 +254,7 @@ Alpha-zero improves on vanilla MCST by introducing two-headed neural network to 
 
 ***
 
-## 4. Deploying to Production with TorchScript and Rust
+## 4. Deploying to Production with TorchScript and Rust [DRAFT]
 
 ![Deploy](https://res.infoq.com/presentations/pytorch-torchscript-botorch/en/slides/sl43-1566323726996.jpg)
 
@@ -262,7 +262,7 @@ Alpha-zero improves on vanilla MCST by introducing two-headed neural network to 
 
 ***
 
-## Results
+## Results [DRAFT]
 
 ### Training Results
 
