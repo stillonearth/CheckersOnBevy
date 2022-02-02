@@ -139,11 +139,11 @@ fn click_square(
         return;
     }
 
-    if old_piece == None {
+    if old_piece.is_none() {
         return;
     }
 
-    let (move_type, _new_state, _termination) = game.step(old_piece, new_square);
+    let (move_type, _, _) = game.step(old_piece.unwrap(), new_square.unwrap());
 
     // Check whether game move was valid
     match move_type {
@@ -156,7 +156,7 @@ fn click_square(
                 selected_piece.entity = new_entity;
             }
         }
-        game::MoveType::Regular => {
+        game::MoveType::Regular | game::MoveType::Pass => {
             selected_piece.deselect();
             selected_square.deselect();
         }

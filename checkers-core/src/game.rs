@@ -19,6 +19,7 @@ pub enum MoveType {
     Invalid,
     JumpOver,
     Regular,
+    Pass,
 }
 
 pub type Position = (u8, u8);
@@ -69,6 +70,10 @@ impl Piece {
     }
 
     pub fn is_move_valid(&self, new_square: Square, pieces: &Vec<Piece>) -> MoveType {
+        if self.x == new_square.x && self.y == new_square.y {
+            return MoveType::Pass;
+        }
+
         let is_square_occopied = pieces
             .iter()
             .filter(|p| p.x == new_square.x && p.y == new_square.y)
@@ -307,25 +312,16 @@ impl Game {
 
     pub fn step(
         &mut self,
-        piece: Option<Piece>,
-        square: Option<Square>,
+        mut piece: Piece,
+        square: Square,
     ) -> (MoveType, &GameState, GameTermination) {
         let mut move_type: MoveType = MoveType::Invalid;
-
-        // pass turn
-        if piece.is_none() || square.is_none() {
-            self.state.turn.change();
-            return (MoveType::Regular, &self.state, self.check_termination());
-        }
 
         // chain limit met
         if self.state.turn.chain_count >= CHAIN_LIMIT {
             self.state.turn.change();
             return (MoveType::Regular, &self.state, self.check_termination());
         }
-
-        let mut piece = piece.unwrap();
-        let square = square.unwrap();
 
         match piece.is_move_valid(square, &self.state.pieces) {
             MoveType::JumpOver => {
@@ -337,6 +333,9 @@ impl Game {
             MoveType::Regular => {
                 piece.move_to_square(square);
                 move_type = MoveType::Regular;
+                self.state.turn.change();
+            }
+            MoveType::Pass => {
                 self.state.turn.change();
             }
             _ => {}
@@ -367,6 +366,9 @@ impl Game {
             if self.state.turn.chain_count > 0 && (p.id as i16) != self.state.turn.chain_piece_id {
                 continue;
             }
+
+            // зmove to same position is passing a turn
+            moveset[p.id as usize].push((p.x, p.y) as Position);
 
             for s in self.squares.iter() {
                 match p.is_move_valid(*s, &self.state.pieces) {

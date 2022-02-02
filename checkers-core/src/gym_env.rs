@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Action {
-    pub piece: Option<game::Piece>,
-    pub square: Option<game::Square>,
+    pub piece: game::Piece,
+    pub square: game::Square,
 }
 
 #[derive(Debug, Serialize)]

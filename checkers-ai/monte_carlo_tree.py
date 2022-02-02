@@ -15,32 +15,32 @@ class RandomPlayTree:
     """
     Random Play Tree (RPT) plays a game randomly. Base class for Monte Carlo Tree (MCT).
 
-    - Sequence of moves is organized to a tree structure
+    - Sequence of actions is organized to a tree structure
     - Any node in tree can be expanded
-    - RPT chooses a random move at each turn and plays the game unless game is ended.
+    - RPT chooses a random action at each turn and plays the game unless game is ended.
     """
     
     def __init__(self, env, board_size):
         self.env = env
-        self.root_node = Node(None, self.env.reset(), None, 1.0)
+        self.root_node = Node(parent=None, state=self.env.reset(), action=None, reward=0, prob=1.0)
         self.board_size = board_size
         
-    def pick_move(self, node):
-        """Pick next move
+    def pick_action(self, node):
+        """Pick next action
         
         Parameters:
             node (Node): a game tree node
 
         Returns:
-            (moves, probs): possible moves and their probabilities
+            (actions, probs): possible actions and their probabilities
         """
-        possible_moves = node.possible_moves()
+        possible_actions = node.possible_actions()
 
-        if len(possible_moves) == 0:
+        if len(possible_actions) == 0:
             return None, 0.0
         
-        index = np.random.choice(len(possible_moves))
-        return tuple(possible_moves[index]), np.ones(len(possible_moves)) / len(possible_moves)
+        index = np.random.choice(len(possible_actions))
+        return tuple(possible_actions[index]), np.ones(len(possible_actions)) / len(possible_actions)
     
     def find_node(self, uuid):
         """Find tree node by UUID
@@ -58,47 +58,42 @@ class RandomPlayTree:
                 return _find_node(node)
         return _find_node(self.root_node)
 
-    def move(self, node, move, prob):
-        """Make a move
+    def act(self, node, action, prob):
+        """Make a action
         
         Parameters:
             node (Node): game tree node
-            move (tuple): move
-            prob (float32): move probability
+            action (tuple): action
+            prob (float32): action probability
         
         Returns:
             Node: new node
         """
         # Reset environment to node's state. Useful in MCTS unroll situation.
         
-        action = {
-            'piece': node.get_piece_by_coord(move[0], move[1]),
-            'square': {
-                'x': move[2],
-                'y': move[3],
-            }
+        serialized_action = {
+            'piece': node.get_piece_by_coord(action[0], action[1]),
+            'square': {'x': action[2], 'y': action[3]}
         }
 
-        self.env.reset(node.original_state)
-        state, reward, done, _info = self.env.step(action)
+        self.env.reset(node.state)
+        state, reward, done, _info = self.env.step(serialized_action)
 
-        existing_nodes = list(filter(lambda n: n.move == move, node.children))
+        existing_nodes = list(filter(lambda n: n.action == action, node.children))
         
         # Whether this node has been already visited before
         if len(existing_nodes):
             new_node = existing_nodes[0]
             new_node.prob = prob
         else:
-            new_node = Node(node, state, move, prob)
-            new_node.is_terminal = done
-            new_node.value = reward
+            new_node = Node(parent=node, state=state, action=action, reward=reward, prob=prob, is_terminal=done)
             node.add_child(new_node)
 
         return new_node
 
     def simulate(self, node):
-        """Simulation is MCTS is a sequence of moves that starts in current node and ends in terminal node. 
-        During simulation moves are chosen w.r.t. rollout policy function which in usually uniform random.
+        """Simulation is MCTS is a sequence of actions that starts in current node and ends in terminal node. 
+        During simulation actions are chosen w.r.t. rollout policy function which in usually uniform random.
         
         Parameters:
             node (Node): start node
@@ -109,12 +104,12 @@ class RandomPlayTree:
         current_node = node
         
         while True:
-            move, prob = self.pick_move(current_node)   
+            action, prob = self.pick_action(current_node)   
 
-            if move is None: # no possible moves
+            if action is None: # no possible actions
                 break
-       
-            current_node = self.move(current_node, move, prob)
+
+            current_node = self.act(current_node, action, prob)
             if current_node.is_terminal:
                 break
         
@@ -124,10 +119,13 @@ class RandomPlayTree:
 class MonteCarloPlayTree(RandomPlayTree):
 
     def evaluate_node(self, node):
-        return node.value
+        if node.current_player() == 1:
+            return node.reward
+        else:
+            return -node.reward
     
-    def pick_move(self, node):
-        """Pick next move"""
+    def pick_action(self, node):
+        """Pick next action"""
         
         leaf = self.traverse(node)  
         for _ in range(MCTS_N_SIMULATIONS):
@@ -137,7 +135,7 @@ class MonteCarloPlayTree(RandomPlayTree):
 
         best_child = node.best_child()
 
-        return best_child.move, best_child.prob
+        return best_child.action, best_child.prob
 
     def uct(self, node, c=MCTS_C):
         """
@@ -147,7 +145,7 @@ class MonteCarloPlayTree(RandomPlayTree):
         torch.sqrt(torch.log(N_v_parent)/N_v) - exploration component (favors node that weren't visited)
         c                                     - tradeoff
         
-        In competetive games Q is always computed relative to player who moves.
+        In competitive games Q is always computed relative to player who moves.
 
         Parameters
         ----------
@@ -179,16 +177,16 @@ class MonteCarloPlayTree(RandomPlayTree):
         if node.is_fully_expanded():
             return self.traverse(node.best_uct(self.uct))
 
-        move, prob = self.traverse_policy(node)
-        return self.move(node, move, prob)  
+        action, prob = self.traverse_policy(node)
+        return self.act(node, action, prob)  
 
     def traverse_policy(self, node):
         """Traverse policy in uniform random"""
-        unexplored_moves = list(node.possible_unexplored_moves())
+        unexplored_actions = list(node.possible_unexplored_actions())
 
-        index = np.random.choice(len(unexplored_moves))
-        move = unexplored_moves[index]
-        return move, 1. / len(node.possible_moves())
+        index = np.random.choice(len(unexplored_actions))
+        action = unexplored_actions[index]
+        return action, 1. / len(node.possible_actions())
 
     def rollout(self, node, depth):
         """Rollout a node according to a rollout policy."""
@@ -198,20 +196,20 @@ class MonteCarloPlayTree(RandomPlayTree):
         if node.is_terminal:
             return node
 
-        move, prob = self.rollout_policy(node)
-        new_node = self.move(node, move, prob)  
+        action, prob = self.rollout_policy(node)
+        new_node = self.act(node, action, prob)  
         return self.rollout(new_node, depth+1)
 
     def rollout_policy(self, node):
         """
-        A Policy used to pick next best move
+        A Policy used to pick next best action
         In Non-Neural Monte Carlo Tree it is random uniform.
         """
-        possible_moves = list(node.possible_moves())
+        possible_actions = list(node.possible_actions())
 
-        index = np.random.choice(len(possible_moves))
-        move = possible_moves[index]
-        return move, 1. / len(possible_moves)
+        index = np.random.choice(len(possible_actions))
+        action = possible_actions[index]
+        return action, 1. / len(possible_actions)
 
     def backpropagate(self, node, result):
         """Backpropagate node's statistics all the way up to root node"""
@@ -230,10 +228,10 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
         self.optimizer = optim.Adam(self.actor_critic_network.parameters(), lr=LR)
         self.device = device
 
-    def correct_probs_with_possible_moves(self, node, probs_tensor):
-        possible_moves = node.possible_moves(raw=True)
-        possible_moves_tensor = torch.from_numpy(possible_moves).to(self.device).view(self.board_size**4) 
-        probs_tensor *= possible_moves_tensor
+    def correct_probs_with_possible_actions(self, node, probs_tensor):
+        possible_actions = node.possible_actions(raw=True)
+        possible_actions_tensor = torch.from_numpy(possible_actions).to(self.device).view(self.board_size**4) 
+        probs_tensor *= possible_actions_tensor
         probs_tensor = probs_tensor.view(
             1, self.board_size, self.board_size, self.board_size, self.board_size
         ).squeeze()
@@ -245,14 +243,14 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
         state = node.prepared_game_state()
         state_tensor = torch.from_numpy(state).float().to(self.device).unsqueeze(0)
         probs_tensor, _ = self.actor_critic_network(state_tensor)
-        probs_tensor = self.correct_probs_with_possible_moves(node, probs_tensor) \
+        probs_tensor = self.correct_probs_with_possible_actions(node, probs_tensor) \
             .cpu().detach().numpy()
-        moves = np.argwhere(probs_tensor>0).tolist()
-        probs = np.array([probs_tensor[m[0], m[1], m[2], m[3]] for m in moves])
+        actions = np.argwhere(probs_tensor>0).tolist()
+        probs = np.array([probs_tensor[m[0], m[1], m[2], m[3]] for m in actions])
         probs /= np.sum(probs)
         index = np.random.choice(np.arange(len(probs)), p=probs)
 
-        return moves[index], probs[index]
+        return actions[index], probs[index]
 
     def uct(self, node, c=MCTS_C):
         N_v = node.number_of_visits + 1
@@ -294,16 +292,16 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
                 score = -1
 
             trajectory = terminal_node.unroll()
-            print("number of moves: ", len(trajectory), )
+            print("number of actions: ", len(trajectory), )
             
             states = np.array([node.prepared_game_state(terminal_node.current_player()) for node in trajectory])
             states_tensor = torch.from_numpy(states).float().to(self.device)
             probs, values = self.actor_critic_network(states_tensor)
 
             for i, node in enumerate(trajectory):
-                possible_moves = node.possible_moves(raw=True)
-                possible_moves_tensor = torch.from_numpy(possible_moves).to(self.device)
-                probs[i] *= possible_moves_tensor.view(self.board_size**4)
+                possible_actions = node.possible_actions(raw=True)
+                possible_actions_tensor = torch.from_numpy(possible_actions).to(self.device)
+                probs[i] *= possible_actions_tensor.view(self.board_size**4)
             
             # Loss function. Core of alpha-zero
             loss = ((values - score).pow(2) - probs * torch.log(probs+1e-5)).sum()
@@ -326,29 +324,27 @@ def state_to_board(state):
     return board
 
 
-"""Game Tree Node"""
+
 class Node:
-    
-    def __init__(self, parent, original_state, move, prob=0.0, is_terminal=False):
+    """Game Tree Node"""
+    def __init__(self, parent, state, action, reward, is_terminal=False, prob=0.0):
         self.uuid = uuid.uuid1()
         self.parent = parent
         self.children = []
         
-        # State
-        # Keeping ndarray and original object
-        # This probably consumes too much memory
-        self.original_state = original_state
+        self.state = state
+        self.action = action
+        self.reward = reward
         self.is_terminal = is_terminal
-        self.value = 0
 
-        # MCT node properties
+        # MCT properties
         self.number_of_visits = 0
         self.q_black = 0
         self.q_white = 0
+        
         # Traversal properties
         self.prob = prob
-        self.move = move
-
+        
     def add_child(self, node):
         self.children.append(node)
 
@@ -374,41 +370,38 @@ class Node:
         # take advantage of game symmetry        
         state = self.blacks() - self.whites() if player == 1 else self.whites() - self.blacks()
 
-        # if player == 1:
-        #     return np.flip(np.flip(state, 1), 0)
-
         return state
 
     def get_piece_by_id(self, piece_id):
         return next(
             filter(lambda p: p['id'] == piece_id, 
-                self.original_state['pieces']
+                self.state['pieces']
             ))
 
     def get_piece_by_coord(self, x, y):
         return next(
             filter(lambda p: p['x'] == x and p['y'] == y, 
-                self.original_state['pieces']
+                self.state['pieces']
             ))
 
-    """White figures on board"""
     def whites(self):
-        state = state_to_board(self.original_state)
+        """White figures on board"""
+        state = state_to_board(self.state)
         return state[1]
     
-    """Black figures on board"""
     def blacks(self):
-        state = state_to_board(self.original_state)
+        """Black figures on board"""
+        state = state_to_board(self.state)
         return state[0]
 
-    """Return 1 if current player plays black, and -1 for whites"""
     def current_player(self):
-        if self.original_state['turn']['color'] == 'Black':
+        """Return 1 if current player plays black, and -1 for whites"""
+        if self.state['turn']['color'] == 'Black':
             return 1
         return 0
     
-    def possible_moves(self, player=None, raw=False):
-        """List of possible next moves"""
+    def possible_actions(self, player=None, raw=False):
+        """List of possible next actions"""
         if player == None:
             player = self.current_player()
 
@@ -416,23 +409,23 @@ class Node:
         for piece_id in range(0, 18):
             piece = self.get_piece_by_id(piece_id)
             
-            for move in self.original_state['moveset'][piece_id]:
-                coords.append((piece['x'], piece['y'], move[0], move[1]))
+            for action in self.state['moveset'][piece_id]:
+                coords.append((piece['x'], piece['y'], action[0], action[1]))
 
-        moves = np.zeros((8, 8, 8, 8))
+        actions = np.zeros((8, 8, 8, 8))
         for c in coords:
-            moves[c] = 1
+            actions[c] = 1
         
-        mask = self.possible_moves_mask(player)
-        moves = moves * mask
+        mask = self.possible_actions_mask(player)
+        actions = actions * mask
 
         if raw:
-            return moves
+            return actions
 
-        return np.argwhere(moves).tolist()
+        return np.argwhere(actions).tolist()
 
-    def possible_moves_mask(self, player=None):
-        """Return list of possible next moves as int mask"""
+    def possible_actions_mask(self, player=None):
+        """Return list of possible next actions as i8 mask"""
         if player == None:
             player = self.current_player()
 
@@ -443,47 +436,47 @@ class Node:
             if (piece['color'] == "Black" and player == 1) or (piece['color'] == "White" and player == 0):
                 coords.append((piece['x'], piece['y']))
 
-        moves = np.zeros((8, 8, 8, 8))
+        actions = np.zeros((8, 8, 8, 8))
         for c in coords:
-            moves[c] = 1
+            actions[c] = 1
 
-        return moves
+        return actions
 
-    """How far node from root"""
     def depth(self):
+        """How far node from root"""
         return len(self.unroll())
 
     """Whether node all of node's children were expanded"""
     def is_fully_expanded(self):
-        return len(self.possible_unexplored_moves()) == 0 or self.is_terminal
+        return len(self.possible_unexplored_actions()) == 0 or self.is_terminal
 
     def best_uct(self, uct_func):
         """Pick child node with highest UCT"""
         return sorted(self.children, key=lambda node: uct_func(node), reverse=True)[0]
 
-    """Pick unvisited child node"""
-    def possible_unexplored_moves(self):
-        possible_moves_set = set([tuple(m) for m in self.possible_moves()])
-        explored_moves_set = set([tuple(m.move) for m in self.children])
-        return possible_moves_set - explored_moves_set
+    def possible_unexplored_actions(self):
+        """Unvisited possibled nodes"""
+        possible_actions_set = set([tuple(m) for m in self.possible_actions()])
+        explored_actions_set = set([tuple(m.action) for m in self.children])
+        return possible_actions_set - explored_actions_set
 
-    """Return best child nod"""
     def best_child(self):
+        """Return best child node according to node's number of visits"""
         return sorted(self.children, key=lambda node: node.number_of_visits, reverse=True)[0]
 
     def is_root(self):
         return self.parent == None
 
-    """Update node statistics"""
     def update_stats(self, result):
+        """Update node statistics"""
         self.number_of_visits += 1
         if result > 0:
             self.q_black += 1
         if result < 0:
             self.q_white += 1
 
-    """Return list of nodes to root"""
     def unroll(self):
+        """Return list of nodes to root"""
         nodes = [self]
         node = self
         while node.parent is not None:
