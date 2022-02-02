@@ -29,6 +29,8 @@ In the first part of this project we will implement a Checkers Ugolki game with 
 
 ## 1. Making Checkers Ugolki game with Bevy and Rust
 
+![Bevy](https://gamefromscratch.com/wp-content/uploads/2020/08/BevyRustGameEngine.png)
+
 On high-level project is structured with [workspace](https://doc.rust-lang.org/cargo/reference/manifest.html#the-workspace-field) feature of Cargo.toml.
 
 Project is organized in following manner:
@@ -180,6 +182,8 @@ In order to use these modules in other projects they have to be exported via `li
 
 ## 2. Making OpenAI Gym Environment with Python and Rust
 
+![Gym](https://miro.medium.com/max/659/1*Y2mmrAOmmb1pNCVGINJxQA.png)
+
 ## 2.1 🗀 checkers-server
 
 We want our Python Gym environment to run simulation, correct it state and take screenshots. We could have wrapped entire application to [pyo3](https://github.com/PyO3/pyo3) but that would require running ```bevy_frontend``` on non-main thread, while communicating with ```gym_env``` which would share game state with bevy app. Unfortunately there are number of limitations limiting us from this path:
@@ -204,6 +208,8 @@ A client that communicates with ```checkers-server```. You can run multiple inst
 
 ## 3. Training AlphaZero to play Checkers Ugolki with PyTorch and Python
 
+![PyTorch](https://cdn.windowsreport.com/wp-content/uploads/2020/07/Microsoft-is-taking-over-PyTorch-for-Windows-from-Facebook.jpg)
+
 Checkers is fully observable turn-based zero-sum game, which means:
 
 * **Fully Observable Game:** Game state is fully known to both players at any moment of the game
@@ -225,6 +231,8 @@ Actions-Value model:
 ***
 
 ## 4. Deploying to Production with TorchScript and Rust
+
+![Deploy](https://res.infoq.com/presentations/pytorch-torchscript-botorch/en/slides/sl43-1566323726996.jpg)
 
 ## 4.1 🗀 checkers-ai
 
