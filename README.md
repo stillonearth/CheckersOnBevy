@@ -4,13 +4,13 @@
 <br />
 February 2022
 
+![Шашка](https://i.ibb.co/WDxxKJD/Screenshot-2022-01-13-140430.png)
+
 ## Project Description
 
 This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch. 
 
 In the first part of this project we will implement a Checkers Ugolki game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust Environment.
-
-[IMAGE]
 
 ### Project Goals
 
