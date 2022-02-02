@@ -1,4 +1,4 @@
-# Checkers Ugolki game with Bevy and Rust and AI Agent based on Monte Carlo Tree Search (MCTS) with neural evaluation of actions on value functions (AlphaZero) with PyTorch and Python
+# Checkers Ugolki game on Rust and Bevy, OpenAI Gym Environment and AI Agent based on Monte Carlo Tree Search (MCTS) with neural heuristics (AlphaZero) on Python and PyTorch
 
 **Sergei Surovtsev** <<ssurovsev@gmail.com>>
 <br />
@@ -222,11 +222,35 @@ Monte-Carlo Search Tree is known method for solving such games. For games with h
 
 #### 3.1.1 Monte-Carlo Search Trees
 
+![MCST](https://images.novatech.co.uk/2020/blog/monte-carlo-search-tree-algorithm.png)
+
+MCST algorithm operates on game trees and doesn't need to know game rules. Via self-play it can discover strategies which with sufficient amount of compute outperform human players. [3]
+
+We organize sequence of moves into tree structure. I.e. for each game state node in tree there are n branches where n is number of allowed actions from that state.
+
+A node N on tree T is characterized by:
+
+* S: State
+* A: Action
+* R: Reward
+* D: Whether node is terminal, game end reached
+* q_black: value of node for blacks winning starting from this node
+* q_white: value of node for whites winning starting from this node
+* N: Number of visits
+
+**Vanilla Monte-Carlo Play Tree Algorithm**
+
+1. Traverse tree from given node `N` to leaf node `L` using `traverse policy` — non-stochastic
+2. From a leaf node `L` rollout `n` trajectories until terminal node is reached or computation budged is exhausted
+3. Back-propagate terminal node result through from `L` to root node `R`
+
+Traverse Policy: among node's children chose one with highest Upper Confidence Bound value ```Q/(N.N+1) + sqrt(c*log(N.parent.N+1)/(N.N+1))``` where ```c=sqrt(2)```. See [2] for details.
+
 #### 3.1.2 AlphaZero
 
-### 3.2 Neural Networks
+Alpha-zero improves on vanilla MCST by introducing two-headed neural network to evaluate node's value (predict who's winning) and suggest actions to maximize node's value function. See [2] for details and ```checkers-ai/monte_carlo_tree.py``` for implementation.
 
-Actions-Value model:
+### 3.2 Neural Networks
 
 ***
 
@@ -244,10 +268,10 @@ Actions-Value model:
 
 ### Rust, Bevy and Torch 
 
-Subjective state of these instruments (Februrary 2022):
+Subjective state of these instruments (February 2022):
 
-* Rust & Bevy
-* PyTorch
+* **Rust & Bevy:**  Bevy is suitable for implementing novel training environments because of stability, memory safety and broad ecosystem of plugins. Bevy doesn't cost you anything, distributed with double MIT, Apache 2.0 and can be freely used in research and production. It can also target Web, Desktop and Mobile making it prime choice for rapid prototyping.
+* **PyTorch:** Has been stable enough that code from 2019 has been used with minor modifications.
 
 ***
 
@@ -255,3 +279,4 @@ Subjective state of these instruments (Februrary 2022):
 
 * [1] Chess game in Rust using Bevy, guimcaballero, Nov 16th 2020, https://caballerocoll.com/blog/bevy-chess-tutorial/
 * [2] Reimplementing Alpha-Zero for board game of Go, Sergei Surovtsev, December 2019, https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb
+* [3] CS234 Notes - Lecture 14 Model Based RL, Monte-Carlo Tree Search, Anchit Gupta, Emma Brunskill, June 2018, https://web.stanford.edu/class/cs234/CS234Win2019/slides/lnotes14.pdf

@@ -133,7 +133,7 @@ class MonteCarloPlayTree(RandomPlayTree):
             value = self.evaluate_node(terminal_node)
             self.backpropagate(leaf, value)
 
-        best_child = node.best_child()
+        best_child = node.best_uct(self.uct)
 
         return best_child.action, best_child.prob
 
