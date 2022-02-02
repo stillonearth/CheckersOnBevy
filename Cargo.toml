@@ -1,34 +1,6 @@
-[package]
-edition = "2021"
-name = "checkers"
-version = "0.1.0"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[dependencies]
-anyhow = {version = "1.0", default-features = false}
-bevy = {version = "0.6.0"}
-bevy-inspector-egui = {version = "0.7.2"}
-bevy_mod_picking = {git = "https://github.com/aevyrie/bevy_mod_picking"}
-bevy_tweening = {version = "0.2.0"}
-tonic = "0.6"
-prost = "0.9"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-serde = "1.0.136"
-serde_json = "1.0"
-futures = "0.3"
-bevy_tasks="0.6.0"
-
-[build-dependencies]
-tonic-build = "0.6"
-
-[[bin]] # Bin to run the HelloWorld gRPC server
-name = "checkers-server"
-path = "src/server.rs"
-
-[[bin]] # Bin to run the HelloWorld gRPC client
-name = "checkers-client"
-path = "src/client.rs"
-
-[[bin]]
-name = "checkers"
-path = "src/main.rs"
+resolver = "2"
+members = [
+  "checkers-core", "checkers-server", "checkers-client"
+]
