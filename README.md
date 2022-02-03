@@ -258,7 +258,14 @@ Alpha-zero improves on vanilla MCST by introducing two-headed neural network to 
 
 ![Deploy](https://res.infoq.com/presentations/pytorch-torchscript-botorch/en/slides/sl43-1566323726996.jpg)
 
-## 4.1 🗀 checkers-ai
+This should be easy with TorchScript, but there are some caveats:
+
+* libtorch is 200+ MiB, and linked dynamically. This renders wasm target unusable.
+* Models with more than 2 heads should be wrapped in TorchScript as tch-rs implements models with 1 tensor in 1 tensor out. 
+
+## 4.1 🗀 checkers-core
+
+`brain.rs` uses tch-rs to use TorchScript model.
 
 ***
 
