@@ -50,7 +50,7 @@ fn sync_game_state(
         s.spawn(async move {
             if game.is_changed() {
                 // push state to server
-                push_game_state(game.state.clone(), grpc_client.as_mut());
+                // push_game_state(game.state.clone(), grpc_client.as_mut());
             } else if timer.0.tick(time.delta()).just_finished() {
                 // pull state from server
                 let state = fetch_game_state(grpc_client.as_mut());
@@ -83,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app.insert_resource(grpc_client);
     app.insert_resource(pool);
-    app.insert_resource(StateUpdateTimer(Timer::from_seconds(0.01, true)));
+    app.insert_resource(StateUpdateTimer(Timer::from_seconds(0.2, true)));
     app.add_system(sync_game_state);
     app.run();
 

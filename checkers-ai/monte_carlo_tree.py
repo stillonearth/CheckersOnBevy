@@ -5,8 +5,8 @@ import torch.optim as optim
 import torch
 
 
-MCTS_N_SIMULATIONS = 10
-MCTS_ROLLOUT_DEPTH = 40
+MCTS_N_SIMULATIONS = 30
+MCTS_ROLLOUT_DEPTH = 100
 MCTS_C = np.sqrt(2.0)
 LR = 3e-4
 
@@ -258,8 +258,8 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
 
         # TODO: test
         V_current = self.estimate_node_value(node)
-        # for child in node.children:
-        # V_current -= self.estimate_node_value(child)
+        for child in node.children:
+            V_current -= self.estimate_node_value(child)
         
         result = V_current/N_v + c * np.sqrt(np.log(N_v_parent)/N_v) * node.prob
 
@@ -297,14 +297,19 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             states = np.array([node.prepared_game_state(terminal_node.current_player()) for node in trajectory])
             states_tensor = torch.from_numpy(states).float().to(self.device)
             probs, values = self.actor_critic_network(states_tensor)
-
-            for i, node in enumerate(trajectory):
-                possible_actions = node.possible_actions(raw=True)
-                possible_actions_tensor = torch.from_numpy(possible_actions).to(self.device)
-                probs[i] *= possible_actions_tensor.view(self.board_size**4)
             
             # Loss function. Core of alpha-zero
-            loss = ((values - score).pow(2) - probs * torch.log(probs+1e-5)).sum()
+            # loss = ((values - score).pow(2) - probs * torch.log(probs+1e-5)).sum()
+
+            loss_term_1 = (values - score).pow(2) #- (probs * torch.log(probs)).sum()).sum()
+            loss_term_2 = 0
+            for i, node in enumerate(trajectory):
+                prob = probs[i]
+                if node.action is not None:
+                    prob = prob.view(self.board_size,self.board_size,self.board_size,self.board_size)[node.action[0], node.action[1], node.action[2], node.action[3]]
+                    loss_term_2 += node.prob * torch.log(prob+1e-5)
+
+            loss = (loss_term_1 - loss_term_2).sum()
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -322,7 +327,6 @@ def state_to_board(state):
         board[2] = 1 if state['turn']['color'] == "Black" else 0
 
     return board
-
 
 
 class Node:

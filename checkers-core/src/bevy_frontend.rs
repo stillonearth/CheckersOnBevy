@@ -4,6 +4,7 @@ use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 use bevy_tweening::*;
 
+use crate::brain;
 use crate::game;
 
 // ---
@@ -63,6 +64,17 @@ impl FromWorld for Materials {
 }
 
 // ---
+// States
+// ---
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+enum AppState {
+    PlayerMove,
+    ComputerMove,
+    Idle,
+}
+
+// ---
 // Components
 // ---
 
@@ -113,6 +125,7 @@ pub fn create_board(
 }
 
 fn click_square(
+    mut app_state: ResMut<State<AppState>>,
     mut game: ResMut<game::Game>,
     // bevy game entities
     mut selected_square: ResMut<SelectedSquare>,
@@ -121,6 +134,11 @@ fn click_square(
     square_query: Query<(Entity, &game::Square)>,
     pieces_query: Query<(Entity, &game::Piece)>,
 ) {
+    match app_state.current() {
+        AppState::ComputerMove => return,
+        _ => {}
+    }
+
     let (_, new_square) = find_square_by_entity(selected_square.entity, &square_query);
 
     if new_square.is_none() {
@@ -162,6 +180,8 @@ fn click_square(
         }
         _ => {}
     }
+
+    app_state.replace(AppState::ComputerMove);
 }
 
 fn event_square_selected(
@@ -267,7 +287,7 @@ fn event_piece_moved(
         commands.entity(entity).insert(Animator::new(
             EaseFunction::QuadraticInOut,
             TweeningType::Once {
-                duration: Duration::from_millis(50),
+                duration: Duration::from_millis(190),
             },
             TransformPositionWithYJumpLens {
                 start: transform.translation,
@@ -412,43 +432,35 @@ fn next_move_text_update(game: Res<game::Game>, mut query: Query<(&mut Text, &Ne
     }
 }
 
-// ---
-// Plugins
-// ---
+// AI -- moving in game
 
-pub struct BoardPlugin;
-impl Plugin for BoardPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<SelectedSquare>()
-            .init_resource::<SelectedPiece>()
-            .add_startup_system(create_board)
-            .add_system(click_square.label("input"))
-            .add_system(update_entity_pieces.after("input"))
-            .add_system(event_square_selected)
-            .add_system(check_game_termination)
-            .add_event::<EventPieceMove>()
-            .add_plugin(PiecesPlugin);
+fn computer_turn(
+    brain: Res<brain::Brain>,
+    mut app_state: ResMut<State<AppState>>,
+    mut game: ResMut<game::Game>,
+    // bevy game entities
+    mut selected_square: ResMut<SelectedSquare>,
+    mut selected_piece: ResMut<SelectedPiece>,
+    // queries
+    square_query: Query<(Entity, &game::Square)>,
+    pieces_query: Query<(Entity, &game::Piece)>,
+) {
+    match app_state.current() {
+        AppState::PlayerMove | AppState::Idle => return,
+        _ => {}
     }
-}
 
-pub struct PiecesPlugin;
-impl Plugin for PiecesPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(create_pieces.system())
-            .add_plugin(TweeningPlugin)
-            .add_system(highlight_piece.system())
-            .add_system(event_piece_moved.system());
+    let action = brain.choose_action(game.state.clone());
+    if action.is_none() {
+        game.state.turn.change();
+        app_state.replace(AppState::PlayerMove);
+        return;
     }
-}
 
-pub struct UIPlugin;
-impl Plugin for UIPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(init_text.system())
-            .add_startup_system(init_buttons.system())
-            .add_system(next_move_text_update.system())
-            .add_system(button_system.system());
-    }
+    let action = action.unwrap();
+
+    game.step(action.piece, action.square);
+    game.state.turn.change();
 }
 
 // ---
@@ -566,6 +578,46 @@ impl Lens<Transform> for TransformPositionWithYJumpLens {
 }
 
 // ---
+// Plugins
+// ---
+
+pub struct BoardPlugin;
+impl Plugin for BoardPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<SelectedSquare>()
+            .init_resource::<SelectedPiece>()
+            .add_startup_system(create_board)
+            .add_system(click_square.label("input"))
+            .add_system(update_entity_pieces.after("input"))
+            .add_system(event_square_selected)
+            .add_system(check_game_termination)
+            .add_system(computer_turn)
+            .add_event::<EventPieceMove>()
+            .add_plugin(PiecesPlugin);
+    }
+}
+
+pub struct PiecesPlugin;
+impl Plugin for PiecesPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(create_pieces.system())
+            .add_plugin(TweeningPlugin)
+            .add_system(highlight_piece.system())
+            .add_system(event_piece_moved.system());
+    }
+}
+
+pub struct UIPlugin;
+impl Plugin for UIPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(init_text.system())
+            .add_startup_system(init_buttons.system())
+            .add_system(next_move_text_update.system())
+            .add_system(button_system.system());
+    }
+}
+
+// ---
 // Entry Point
 // ---
 
@@ -612,6 +664,7 @@ pub fn create_bevy_app(game: game::Game) -> App {
         })
         // Resources
         .insert_resource(game)
+        .add_state(AppState::PlayerMove)
         // Entry Point
         .add_startup_system(setup.system())
         // External Plugins
@@ -621,8 +674,8 @@ pub fn create_bevy_app(game: game::Game) -> App {
         // Debug plugins
         // Application Plugins
         .init_resource::<Materials>()
-        .add_plugin(BoardPlugin)
-        .add_plugin(UIPlugin);
+        .add_plugin(BoardPlugin);
+    // .add_plugin(UIPlugin);
 
     if DEBUG {
         app.add_plugin(WorldInspectorPlugin::new());

@@ -165,7 +165,7 @@ impl Piece {
                     (begin.0 - i as u8, begin.1 - i as u8)
                 };
 
-                if color_of_square(pos, pieces).is_some() {
+                if find_piece_at_position(pos, pieces).is_some() {
                     collision_count += 1;
                 }
             }
@@ -367,8 +367,8 @@ impl Game {
                 continue;
             }
 
-            // зmove to same position is passing a turn
-            moveset[p.id as usize].push((p.x, p.y) as Position);
+            // move to same position is passing a turn
+            moveset[i as usize].push((p.x, p.y) as Position);
 
             for s in self.squares.iter() {
                 match p.is_move_valid(*s, &self.state.pieces) {
@@ -385,10 +385,10 @@ impl Game {
     }
 }
 
-pub fn color_of_square(pos: (u8, u8), pieces: &Vec<Piece>) -> Option<Color> {
+pub fn find_piece_at_position(pos: (u8, u8), pieces: &Vec<Piece>) -> Option<Piece> {
     for piece in pieces {
         if piece.x == pos.0 && piece.y == pos.1 {
-            return Some(piece.color);
+            return Some(*piece);
         }
     }
     None
