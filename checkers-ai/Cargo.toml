@@ -1,0 +1,9 @@
+[package]
+edition = "2021"
+name = "checkers-ai"
+version = "0.2.0"
+
+[dependencies]
+tch="0.6.1"
+rand="0.8.4"
+checkers-core = {path = "../checkers-core", version = "^0.2.0"}

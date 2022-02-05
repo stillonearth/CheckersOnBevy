@@ -7,7 +7,8 @@ use serde_json;
 
 use futures::executor;
 
-use checkers_core::{bevy_frontend, game};
+use checkers_app::bevy_frontend;
+use checkers_core::game;
 
 pub mod environment {
     tonic::include_proto!("environment");
@@ -78,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = bevy_frontend::create_bevy_app(game);
     let pool = TaskPoolBuilder::new()
         .thread_name("Busy Behavior ThreadPool".to_string())
-        .num_threads(4)
+        .num_threads(1)
         .build();
 
     app.insert_resource(grpc_client);

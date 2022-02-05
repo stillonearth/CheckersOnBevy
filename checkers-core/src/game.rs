@@ -14,7 +14,7 @@ pub enum GameTermination {
     Unterminated,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum MoveType {
     Invalid,
     JumpOver,
@@ -74,13 +74,13 @@ impl Piece {
             return MoveType::Pass;
         }
 
-        let is_square_occopied = pieces
+        let is_square_occupied = pieces
             .iter()
             .filter(|p| p.x == new_square.x && p.y == new_square.y)
             .count()
             > 0;
 
-        if is_square_occopied {
+        if is_square_occupied {
             return MoveType::Invalid;
         }
 

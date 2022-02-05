@@ -1,0 +1,15 @@
+[package]
+edition = "2021"
+name = "checkers-app"
+version = "0.2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+bevy = {version = "0.6.0"}
+bevy_tasks = "0.6.0"
+bevy-inspector-egui = {version = "0.8.0"}
+bevy_mod_picking = {version="0.5.2"}
+bevy_tweening = {version = "0.3.0"}
+futures = "0.3"
+checkers-ai = {path = "../checkers-ai", version = "^0.2.0"}
+checkers-core = {path = "../checkers-core", version = "^0.2.0"}

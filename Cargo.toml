@@ -2,5 +2,5 @@
 
 resolver = "2"
 members = [
-  "checkers-core", "checkers-server", "checkers-client"
+  "checkers-core", "checkers-app", "checkers-server", "checkers-client", "checkers-ai"
 ]
