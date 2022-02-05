@@ -37,12 +37,10 @@ Project is organized in following manner:
 
 ```
 CheckersOnBevy
- |--checkers-core # Contains bevy application and game core mechanics. Can run standalone game.
- |   |--src
- |   |   |--main.rs
- |   |   `--lib.rs
- |   |--assets
- |   `--Cargo.toml
+ |--checkers-core   # Contains bevy application and game core mechanics. Can run standalone game.
+ |--checkers-app    # Bevy front-end application
+ |   |--assets      # Models, Fonts and pictures
+ |--checkers-ai     # Python code to train a model and Rust deployment
  |--checkers-server # gRPC server with game core mechanics
  `--checkers-client # Bevy frontend that connects with server.
 ```
@@ -69,82 +67,7 @@ The reason is that we want our game logic be decoupled from a game front-end (Be
 
 This is pure Rust module, but ```Piece``` and ```Square``` are decorated with bevy's ```Component``` decorator which is needed for Entity-Component-System (ECS) pattern used in Bevy.
 
-### 1.1.2 Front-End 
-
-```bevy_frontend.rs``` implements Bevy application which is influenced by [1].
-
-Bevy uses ECS pattern to describe game logic. It suggests to organize logic in following manner:
-
-* *Entities* — game engine objects such as meshes, groups of meshes 
-* *Components* — attributes that can be matched to entities
-* *Systems* — functions that operate on entities and their components 
-
-In Bevy there is also notion on *Resources* which are similar to global variables or singletons. *Events* are used to pass messages between systems. *Plugins* organize Systems and Resources.
-
-**Plugins and Systems**
-
-*BoardPlugin* describes game board and high-level events such as selection of square, movement and game termination.
-
-```
- BoardPlugin
-  |--[Resources ]
-  |    |--SelectedSquare
-  |    `--SelectedPiece
-  |
-  |--[Startup Systems]
-  |    `--create_board
-  |
-  |--[Events]
-  |   `--event_square_selected
-  |
-  |--[Components]
-  |    |--Square
-  |    `--Piece
-  |
-  |--[Systems]
-  |    |--click_square
-  |    |     `--update_entity_pieces
-  |    `--check_game_termination
-  |
-  `--[Plugins]
-       `--PiecesPlugin
-```
-
-*PiecesPlugin* describes pieces, movement animation and highlighting.
-
-```
- PiecesPlugin
-  |
-  |--[Startup Systems]
-  |    `--create_pieces
-  |
-  |--[Events]
-  |   `--event_piece_moved
-  |
-  |--[Systems]
-  |    `--highlight_piece
-  |
-  `--[Plugins]
-       `--TweeningPlugin
-```
-
-*PiecesPlugin* describes buttons and game state text label.
-
-```
- UIPlugin
-  |
-  |--[Startup Systems]
-  |    `--init_text
-  |
-  |--[Events]
-  |   `--event_piece_moved
-  |
-  `--[Systems]
-       |--next_move_text_update
-       `--button_system
-```
-
-### 1.1.3 OpenAI Gym Interface
+### 1.1.2 OpenAI Gym Interface
 
 [OpenAI Gym](https://gym.openai.com/) describes Environment interface in following way:
 
@@ -180,6 +103,87 @@ In order to use these modules in other projects they have to be exported via `li
 
 ***
 
+## 1.2 🗀 checkers-app
+
+### 1.2.1 Front-End 
+
+```bevy_frontend.rs``` implements Bevy application which is influenced by [1].
+
+Bevy uses ECS pattern to describe game logic. It suggests to organize logic in following manner:
+
+* *Entities* — game engine objects such as meshes, groups of meshes 
+* *Components* — attributes that can be matched to entities
+* *Systems* — functions that operate on entities and their components 
+
+In Bevy there is also notion on *Resources* which are similar to global variables or singletons. *Events* are used to pass messages between systems. *Plugins* organize Systems and Resources.
+
+**Plugins and Systems**
+
+*BoardPlugin* describes game board and high-level events such as selection of square, movement and game termination.
+
+```
+ BoardPlugin
+  |
+  |--[Resources ]
+  |    |--SelectedSquare
+  |    `--SelectedPiece
+  |
+  |--[Startup Systems]
+  |    `--create_board
+  |
+  |--[Events]
+  |   `--event_square_selected
+  |
+  |--[Components]
+  |    |--Square
+  |    `--Piece
+  |
+  |--[Systems]
+  |    |--player_move
+  |    |     `--update_entity_pieces
+  |    |
+  |    |
+  |    |--computer_move
+  |    `--check_game_termination
+  |
+  `--[Plugins]
+       `--PiecesPlugin
+```
+
+*PiecesPlugin* describes pieces, movement animation and highlighting.
+
+```
+ PiecesPlugin
+  |
+  |--[Startup Systems]
+  |    `--create_pieces
+  |
+  |--[Events]
+  |   `--event_piece_moved
+  |
+  |--[Systems]
+  |    `--highlight_piece
+  |
+  `--[Plugins]
+       `--TweeningPlugin
+```
+
+*UIPlugin* describes buttons and game state text label.
+
+```
+ UIPlugin
+  |
+  |--[Startup Systems]
+  |    `--init_text
+  |
+  |--[Events]
+  |   `--event_piece_moved
+  |
+  `--[Systems]
+       |--next_move_text_update
+       `--button_system
+```
+
 ## 2. Making OpenAI Gym Environment with Python and Rust
 
 ![Gym](https://miro.medium.com/max/659/1*Y2mmrAOmmb1pNCVGINJxQA.png)
@@ -202,7 +206,18 @@ A client that communicates with ```checkers-server```. You can run multiple inst
 
 ## 2.3 🗀 checkers-ai
 
+### 2.3.1 Python
+
 ```env.py``` describes ```Env``` — a gRPC client that communicates with Rust gRPC server. This ```Env``` also implements OpenAI Gym Environment interface.
+
+### 2.3.2 Rust
+
+```env.rs``` uses ```tch-rs``` to load python-trained model and make call to it. Some caveats: 
+
+* Torch Script doesn't play well with ```tch-rs``` and tensor dimensions get messed up when ts model is loaded to Rust. Because of them model has to be translated from Python to Rust. It's not a big deal for small models, but as model grows can be an issue.
+* ```checkers-ai``` tends to recompile each ```cargo build```. This turns sub-1sec compilations to 5-10sec compilations. This is due code-generation on ```tch-rs``` side.
+* Documentation of ```tch-rs``` is scarce and debugging is non-obvious.
+* ```tch-rs``` utilizes ```libcuda``` which makes wasm and mobile deployments a problem. For Android there is *PyTorch Mobile*, but then calls from rust have to be wrapped to android calls. 
 
 ***
 
@@ -230,13 +245,15 @@ We organize sequence of moves into tree structure. I.e. for each game state node
 
 A node N on tree T is characterized by:
 
-* S: State
-* A: Action
-* R: Reward
-* D: Whether node is terminal, game end reached
-* q_black: value of node for blacks winning starting from this node
-* q_white: value of node for whites winning starting from this node
-* N: Number of visits
+|  |   |
+|--|---|
+|S |state|
+|A |action|
+|R |reward|
+|D |terminal|
+|Q |value for both players |
+|N |num visits|
+
 
 **Vanilla Monte-Carlo Play Tree Algorithm**
 
@@ -254,31 +271,26 @@ Alpha-zero improves on vanilla MCST by introducing two-headed neural network to 
 
 ***
 
-## 4. Deploying to Production with TorchScript and Rust [DRAFT]
+## 4. Production
 
-![Deploy](https://res.infoq.com/presentations/pytorch-torchscript-botorch/en/slides/sl43-1566323726996.jpg)
-
-This should be easy with TorchScript, but there are some caveats:
-
-* libtorch is 200+ MiB, and linked dynamically. This renders wasm target unusable.
-* Models with more than 2 heads should be wrapped in TorchScript as tch-rs implements models with 1 tensor in 1 tensor out. 
-
-## 4.1 🗀 checkers-core
-
-`brain.rs` uses tch-rs to use TorchScript model.
+## 4.1 Deploying to Desktop (Windows)
+## 4.1 Deploying to Web Assembly (wasm)
+## 4.1 Deploying to Mobile (Android)
 
 ***
 
-## Results [DRAFT]
+## Results 
 
 ### Training Results
+
+**omitted**
 
 ### Rust, Bevy and Torch 
 
 Subjective state of these instruments (February 2022):
 
 * **Rust & Bevy:**  Bevy is suitable for implementing novel training environments because of stability, memory safety and broad ecosystem of plugins. Bevy doesn't cost you anything, distributed with double MIT, Apache 2.0 and can be freely used in research and production. It can also target Web, Desktop and Mobile making it prime choice for rapid prototyping.
-* **PyTorch:** Has been stable enough that code from 2019 has been used with minor modifications.
+* **PyTorch:** Has been stable enough that code from 2019 has been used with minor modifications. Deploying to mobile is still a struggle.
 
 ***
 
