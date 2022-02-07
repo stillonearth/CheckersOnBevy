@@ -5,8 +5,8 @@ import torch.optim as optim
 import torch
 
 
-MCTS_N_SIMULATIONS = 30
-MCTS_ROLLOUT_DEPTH = 100
+MCTS_N_SIMULATIONS = 10
+MCTS_ROLLOUT_DEPTH = 10
 MCTS_C = np.sqrt(2.0)
 LR = 3e-4
 
@@ -20,9 +20,10 @@ class RandomPlayTree:
     - RPT chooses a random action at each turn and plays the game unless game is ended.
     """
     
-    def __init__(self, env, board_size):
+    def __init__(self, env, node_class, board_size):
         self.env = env
-        self.root_node = Node(parent=None, state=self.env.reset(), action=None, reward=0, prob=1.0)
+        self.node_class = node_class
+        self.root_node = node_class(parent=None, state=self.env.reset(), action=None, reward=0, prob=1.0)
         self.board_size = board_size
         
     def pick_action(self, node):
@@ -69,16 +70,16 @@ class RandomPlayTree:
         Returns:
             Node: new node
         """
-        # Reset environment to node's state. Useful in MCTS unroll situation.
         
-        serialized_action = {
-            'piece': node.get_piece_by_coord(action[0], action[1]),
-            'square': {'x': action[2], 'y': action[3]}
-        }
+        # Reset environment to node's state. Useful in MCTS unroll situation.
+        # 
 
-        self.env.reset(node.state)
-        state, reward, done, _info = self.env.step(serialized_action)
+        # go_env doesn't support env state reset
+        self.env.set_state(node.state)
 
+        prep_action = node.prepare_action(action)
+        state, reward, done, _info = self.env.step(prep_action)
+        
         existing_nodes = list(filter(lambda n: n.action == action, node.children))
         
         # Whether this node has been already visited before
@@ -86,8 +87,14 @@ class RandomPlayTree:
             new_node = existing_nodes[0]
             new_node.prob = prob
         else:
-            new_node = Node(parent=node, state=state, action=action, reward=reward, prob=prob, is_terminal=done)
+            new_node = self.node_class(parent=node, state=state, action=action, reward=reward, prob=prob, is_terminal=done)
             node.add_child(new_node)
+
+        possible_actions = new_node.possible_actions()
+
+        if len(possible_actions) == 0:
+            new_node.is_terminal = True
+            new_node.reward = new_node.evaluate(self.env)
 
         return new_node
 
@@ -104,9 +111,11 @@ class RandomPlayTree:
         current_node = node
         
         while True:
-            action, prob = self.pick_action(current_node)   
+            action, prob = self.pick_action(current_node)
 
             if action is None: # no possible actions
+                current_node.is_terminal = True
+                current_node.reward = node.evaluate(self.env)
                 break
 
             current_node = self.act(current_node, action, prob)
@@ -195,6 +204,8 @@ class MonteCarloPlayTree(RandomPlayTree):
 
         if node.is_terminal:
             return node
+
+        # this is due go environment which implements done wrong
 
         action, prob = self.rollout_policy(node)
         new_node = self.act(node, action, prob)  
@@ -377,75 +388,9 @@ class Node:
 
         return state
 
-    def get_piece_by_id(self, piece_id):
-        return next(
-            filter(lambda p: p['id'] == piece_id, 
-                self.state['pieces']
-            ))
-
-    def get_piece_by_coord(self, x, y):
-        return next(
-            filter(lambda p: p['x'] == x and p['y'] == y, 
-                self.state['pieces']
-            ))
-
-    def whites(self):
-        """White figures on board"""
-        state = state_to_board(self.state)
-        return state[1]
-    
-    def blacks(self):
-        """Black figures on board"""
-        state = state_to_board(self.state)
-        return state[0]
-
-    def current_player(self):
-        """Return 1 if current player plays black, and -1 for whites"""
-        if self.state['turn']['color'] == 'Black':
-            return 1
-        return 0
-    
     def possible_actions(self, player=None, raw=False):
         """List of possible next actions"""
-        if player == None:
-            player = self.current_player()
-
-        coords = []
-        for piece_id in range(0, 18):
-            piece = self.get_piece_by_id(piece_id)
-            
-            for action in self.state['moveset'][piece_id]:
-                coords.append((piece['x'], piece['y'], action[0], action[1]))
-
-        actions = np.zeros((8, 8, 8, 8))
-        for c in coords:
-            actions[c] = 1
-        
-        mask = self.possible_actions_mask(player)
-        actions = actions * mask
-
-        if raw:
-            return actions
-
-        return np.argwhere(actions).tolist()
-
-    def possible_actions_mask(self, player=None):
-        """Return list of possible next actions as i8 mask"""
-        if player == None:
-            player = self.current_player()
-
-        coords = []
-        for piece_id in range(0, 18):
-            piece = self.get_piece_by_id(piece_id)
-
-            if (piece['color'] == "Black" and player == 1) or (piece['color'] == "White" and player == 0):
-                coords.append((piece['x'], piece['y']))
-
-        actions = np.zeros((8, 8, 8, 8))
-        for c in coords:
-            actions[c] = 1
-
-        return actions
+        pass
 
     def depth(self):
         """How far node from root"""

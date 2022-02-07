@@ -288,6 +288,10 @@ Subjective state of these instruments (February 2022):
 
 ***
 
+## Acknowledgements
+
+* [A1] OpenAI Gym Go Environment, Eddie Huang, August 2019 — May 2021, https://github.com/aigagror/GymGo
+
 ## References
 
 * [1] Chess game in Rust using Bevy, guimcaballero, Nov 16th 2020, https://caballerocoll.com/blog/bevy-chess-tutorial/

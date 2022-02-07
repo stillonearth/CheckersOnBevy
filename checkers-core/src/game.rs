@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-const MOVE_LIMIT: u8 = 40;
+const MOVE_LIMIT: u8 = 80;
 const CHAIN_LIMIT: u8 = 5;
 
 #[derive(Debug, Serialize)]
@@ -290,7 +290,7 @@ impl Game {
             .filter(|p| (p.color == Color::Black) && piece_in_set(p, white_start_positions()))
             .count();
 
-        if number_of_whites == 9 || number_of_blacks == 9 {
+        if number_of_whites == 1 || number_of_blacks == 1 {
             return match self.state.turn.color {
                 Color::White => GameTermination::BlackMoveLimit,
                 Color::Black => GameTermination::WhiteMoveLimit,
@@ -336,6 +336,7 @@ impl Game {
                 self.state.turn.change();
             }
             MoveType::Pass => {
+                move_type = MoveType::Pass;
                 self.state.turn.change();
             }
             _ => {}

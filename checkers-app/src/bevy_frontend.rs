@@ -76,7 +76,6 @@ pub enum AppState {
     PlayerTurn,
     ComputerTurn,
     Idle,
-    Moving,
 }
 
 // ---
@@ -459,8 +458,6 @@ pub fn computer_turn(
 
     task_pool.scope(|s| {
         s.spawn(async move {
-            println!("cycle");
-
             let brain = brain.lock().unwrap();
             let mut state = game.state.clone();
             state.moveset = game.possible_moves();
@@ -473,27 +470,22 @@ pub fn computer_turn(
             }
 
             let action = action.unwrap();
-
             let (move_type, state, _) = game.step(action.piece, action.square);
-            println!("hij!");
             game.state = state.clone();
             match move_type {
                 game::MoveType::Regular | game::MoveType::Pass => {
                     app_state.set(AppState::PlayerTurn).unwrap();
                 }
                 game::MoveType::Invalid => {
+                    println!("invalid: {:?}", action);
                     // game.state.turn.change();
                     app_state.set(AppState::PlayerTurn).unwrap();
                     return;
                 }
                 _ => {}
             }
-
-            println!("hoj!");
         })
     });
-
-    // app_state.set(AppState::Moving).unwrap();
 }
 
 // ---
@@ -621,7 +613,6 @@ impl Plugin for BoardPlugin {
             .init_resource::<SelectedPiece>()
             .add_startup_system(create_board)
             .add_system(player_turn.label("input"))
-            .add_system(computer_turn)
             .add_system(update_entity_pieces.after("input"))
             .add_system(event_square_selected)
             .add_system(check_game_termination)
@@ -697,7 +688,6 @@ pub fn create_bevy_app(game: game::Game) -> App {
         })
         // Resources
         .insert_resource(game)
-        .add_state(AppState::PlayerTurn)
         // Entry Point
         .add_startup_system(setup.system())
         // External Plugins

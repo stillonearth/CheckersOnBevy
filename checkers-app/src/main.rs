@@ -7,6 +7,8 @@ use checkers_core::game;
 mod bevy_frontend;
 use bevy_tasks::{TaskPool, TaskPoolBuilder};
 
+use std::boxed::Box;
+
 fn main() {
     let brain = Arc::new(Mutex::<brain::Brain>::new(brain::Brain::new()));
     let pool = TaskPoolBuilder::new()
@@ -17,6 +19,8 @@ fn main() {
     let mut app = bevy_frontend::create_bevy_app(game::Game::new());
     app.insert_resource(brain);
     app.insert_resource(pool);
+    app.add_state(bevy_frontend::AppState::PlayerTurn);
+    app.add_system(bevy_frontend::computer_turn);
     app.add_plugin(bevy_frontend::UIPlugin);
     app.run();
 }
