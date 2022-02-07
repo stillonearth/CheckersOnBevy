@@ -297,3 +297,5 @@ Subjective state of these instruments (February 2022):
 * [1] Chess game in Rust using Bevy, guimcaballero, Nov 16th 2020, https://caballerocoll.com/blog/bevy-chess-tutorial/
 * [2] Reimplementing Alpha-Zero for board game of Go, Sergei Surovtsev, December 2019, https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb
 * [3] CS234 Notes - Lecture 14 Model Based RL, Monte-Carlo Tree Search, Anchit Gupta, Emma Brunskill, June 2018, https://web.stanford.edu/class/cs234/CS234Win2019/slides/lnotes14.pdf
+* [4] https://kstatic.googleusercontent.com/files/2f51b2a749a284c2e2dfa13911da965f4855092a179469aedd15fbe4efe8f8cbf9c515ef83ac03a6515fa990e6f85fd827dcd477845e806f23a17845072dc7bd
+* [5] https://www.youtube.com/watch?v=X72vKonfzCk
