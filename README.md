@@ -263,21 +263,22 @@ Alpha-zero improves on vanilla MCST by introducing two-headed neural network to 
 
 ### 3.1.2.1 Loss Function
 
+Loss function to train AlphaZero used in this project is:
+
+![formula](https://render.githubusercontent.com/render/math?math=l=-\pi^Tlog(p)%2b(v-z)^2)
+
 ### 3.2 Neural Networks
 
-Neural network used in this project is attributed to [5]
+Neural network used in this project is attributed to [5]. This is two-headed network used to predict value and policy functions.
 
 ```python
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 class ActorCritic(nn.Module):
 
-    def __init__(self, board_size=BOARD_SIZE):
+    def __init__(self, board_size=8):
         super(ActorCritic, self).__init__()
         
         self.board_size = board_size
@@ -304,7 +305,7 @@ class ActorCritic(nn.Module):
         prob = F.hardsigmoid(self.layer1(x))
         value = F.hardtanh(self.layer2(x))
 
-        return prob.view(-1, 8, 8), value.view(-1, 1)
+        return prob.view(-1, self.board_size, self.board_size), value.view(-1, 1)
 ```
 
 ***
@@ -321,7 +322,13 @@ class ActorCritic(nn.Module):
 
 ### Training Results
 
-**omitted**
+Google-produced Alpha-Zero trained on Google TPUs which faster than consumer-available hardware. To achieve human and above-human performance significant compute time is needed on consumer hardware. In this project network is trained to validate performance on Go Environment [2] for 1000 iterations and then same network is trained for game of Checkers.
+
+According to [6] over 1700 years are required to reproduce Google AlphaZero weights on consumer hardware, which makes reproducibility a problem.
+
+#### Go
+
+#### Checkers Ugolki
 
 ### Rust, Bevy and Torch 
 
@@ -343,3 +350,4 @@ Subjective state of these instruments (February 2022):
 * [3] **CS234 Notes - Lecture 14 Model Based RL, Monte-Carlo Tree Search**, *Anchit Gupta, Emma Brunskill*, June 2018, <br />https://web.stanford.edu/class/cs234/CS234Win2019/slides/lnotes14.pdf
 * [4] **A general reinforcement learning algorithm that masters chess, shogi and Go through self-play**, *Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and others*, Science 362 (6419): 1140--1144 (2018), <br />https://kstatic.googleusercontent.com/files/2f51b2a749a284c2e2dfa13911da965f4855092a179469aedd15fbe4efe8f8cbf9c515ef83ac03a6515fa990e6f85fd827dcd477845e806f23a17845072dc7bd
 * [5] **Udacity Deep Reinforcement Learning Weekly Webinar**, 2019, <br/>https://www.youtube.com/watch?v=X72vKonfzCk
+* [6] **Zero performance**, Gian-Carlo Pascutto, October 2020, <br /> https://web.archive.org/web/20190205013627/http://computer-go.org/pipermail/computer-go/2017-October/010307.html
