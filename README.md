@@ -261,7 +261,51 @@ Traverse Policy: among node's children chose one with highest Upper Confidence B
 
 Alpha-zero improves on vanilla MCST by introducing two-headed neural network to evaluate node's value (predict who's winning) and suggest actions to maximize node's value function. See [2] for details and ```checkers-ai/monte_carlo_tree.py``` for implementation.
 
+### 3.1.2.1 Loss Function
+
 ### 3.2 Neural Networks
+
+Neural network used in this project is attributed to [5]
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+class ActorCritic(nn.Module):
+
+    def __init__(self, board_size=BOARD_SIZE):
+        super(ActorCritic, self).__init__()
+        
+        self.board_size = board_size
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.conv4 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.layer1 = nn.Linear(128, 64)
+        self.layer2 = nn.Linear(128, 1)
+        
+    def forward(self, x):
+
+        x = x.unsqueeze(1)
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.conv3(x))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.conv4(x))
+        x = F.max_pool2d(x, 2)
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = x.view(-1, 128)
+        
+        prob = F.hardsigmoid(self.layer1(x))
+        value = F.hardtanh(self.layer2(x))
+
+        return prob.view(-1, 8, 8), value.view(-1, 1)
+```
 
 ***
 
@@ -294,8 +338,8 @@ Subjective state of these instruments (February 2022):
 
 ## References
 
-* [1] Chess game in Rust using Bevy, guimcaballero, Nov 16th 2020, https://caballerocoll.com/blog/bevy-chess-tutorial/
-* [2] Reimplementing Alpha-Zero for board game of Go, Sergei Surovtsev, December 2019, https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb
-* [3] CS234 Notes - Lecture 14 Model Based RL, Monte-Carlo Tree Search, Anchit Gupta, Emma Brunskill, June 2018, https://web.stanford.edu/class/cs234/CS234Win2019/slides/lnotes14.pdf
-* [4] https://kstatic.googleusercontent.com/files/2f51b2a749a284c2e2dfa13911da965f4855092a179469aedd15fbe4efe8f8cbf9c515ef83ac03a6515fa990e6f85fd827dcd477845e806f23a17845072dc7bd
-* [5] https://www.youtube.com/watch?v=X72vKonfzCk
+* [1] **Chess game in Rust using Bevy**, *guimcaballero*, Nov 16th 2020, <br /> https://caballerocoll.com/blog/bevy-chess-tutorial/
+* [2] **Reimplementing Alpha-Zero for board game of Go**, *Sergei Surovtsev*, December 2019, <br />https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb
+* [3] **CS234 Notes - Lecture 14 Model Based RL, Monte-Carlo Tree Search**, *Anchit Gupta, Emma Brunskill*, June 2018, <br />https://web.stanford.edu/class/cs234/CS234Win2019/slides/lnotes14.pdf
+* [4] **A general reinforcement learning algorithm that masters chess, shogi and Go through self-play**, *Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and others*, Science 362 (6419): 1140--1144 (2018), <br />https://kstatic.googleusercontent.com/files/2f51b2a749a284c2e2dfa13911da965f4855092a179469aedd15fbe4efe8f8cbf9c515ef83ac03a6515fa990e6f85fd827dcd477845e806f23a17845072dc7bd
+* [5] **Udacity Deep Reinforcement Learning Weekly Webinar**, 2019, <br/>https://www.youtube.com/watch?v=X72vKonfzCk

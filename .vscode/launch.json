@@ -11,30 +11,11 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=checkers",
+                    "--bin=checkers-app",
                     "--package=checkers"
                 ],
                 "filter": {
-                    "name": "checkers",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'checkers'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=checkers",
-                    "--package=checkers"
-                ],
-                "filter": {
-                    "name": "checkers",
+                    "name": "checkers-app",
                     "kind": "bin"
                 }
             },

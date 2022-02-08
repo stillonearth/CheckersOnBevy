@@ -5,7 +5,7 @@ use bevy::{app::AppExit, ecs::event::Events, pbr::*, prelude::*, utils::Duration
 
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
-use bevy_tasks::{TaskPool, TaskPoolBuilder};
+use bevy_tasks::TaskPool;
 use bevy_tweening::*;
 
 use checkers_ai::brain;
@@ -137,8 +137,10 @@ fn player_turn(
     // queries
     square_query: Query<(Entity, &game::Square)>,
     pieces_query: Query<(Entity, &game::Piece)>,
+    mut selections: Query<&mut Selection>,
 ) {
     if *app_state.current() != AppState::PlayerTurn {
+        println!("{:?}", selected_square.entity);
         return;
     }
 
@@ -179,6 +181,9 @@ fn player_turn(
             }
         }
         game::MoveType::Regular | game::MoveType::Pass => {
+            for mut s in selections.iter_mut() {
+                s.set_selected(false);
+            }
             selected_piece.deselect();
             selected_square.deselect();
             app_state.set(AppState::ComputerTurn).unwrap();
@@ -494,6 +499,7 @@ pub fn computer_turn(
 
 fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Option<Entity> {
     for event in event_reader.iter() {
+        println!("{:?}", event);
         match event {
             PickingEvent::Selection(selection_event) => match selection_event {
                 SelectionEvent::JustSelected(selection_event) => {
@@ -612,9 +618,9 @@ impl Plugin for BoardPlugin {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
             .add_startup_system(create_board)
+            .add_system(event_square_selected)
             .add_system(player_turn.label("input"))
             .add_system(update_entity_pieces.after("input"))
-            .add_system(event_square_selected)
             .add_system(check_game_termination)
             .add_event::<EventPieceMove>()
             .add_plugin(PiecesPlugin);
@@ -649,11 +655,11 @@ fn setup(mut commands: Commands) {
     // Light
     commands.spawn_bundle(PointLightBundle {
         point_light: PointLight {
-            intensity: 7000.0,
+            intensity: 3000.0,
             shadows_enabled: false,
             ..Default::default()
         },
-        transform: Transform::from_xyz(0.0, 8.0, 3.5),
+        transform: Transform::from_xyz(0.0, 4.0, 3.5),
         ..Default::default()
     });
 

@@ -5,8 +5,8 @@ import torch.optim as optim
 import torch
 
 
-MCTS_N_SIMULATIONS = 10
-MCTS_ROLLOUT_DEPTH = 10
+MCTS_NUM_SIMULATIONS = 10
+MCTS_ROLLOUT_DEPTH   = 30
 MCTS_C = np.sqrt(2.0)
 LR = 3e-4
 
@@ -137,7 +137,7 @@ class MonteCarloPlayTree(RandomPlayTree):
         """Pick next action"""
         
         leaf = self.traverse(node)  
-        for _ in range(MCTS_N_SIMULATIONS):
+        for _ in range(MCTS_NUM_SIMULATIONS):
             terminal_node = self.rollout(leaf, 0)
             value = self.evaluate_node(terminal_node)
             self.backpropagate(leaf, value)
@@ -209,6 +209,10 @@ class MonteCarloPlayTree(RandomPlayTree):
         # this is due go environment which implements done wrong
 
         action, prob = self.rollout_policy(node)
+
+        if action is None:
+            return node
+
         new_node = self.act(node, action, prob)  
         return self.rollout(new_node, depth+1)
 
@@ -217,7 +221,9 @@ class MonteCarloPlayTree(RandomPlayTree):
         A Policy used to pick next best action
         In Non-Neural Monte Carlo Tree it is random uniform.
         """
-        possible_actions = list(node.possible_actions())
+        possible_actions = node.possible_actions_list()
+        if len(possible_actions) == 0:
+            return None, 1.0
 
         index = np.random.choice(len(possible_actions))
         action = possible_actions[index]
@@ -231,8 +237,8 @@ class MonteCarloPlayTree(RandomPlayTree):
         self.backpropagate(node.parent, result)
 
 
-"""MCTS with neural augmentations"""
 class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
+    """MCTS with neural augmentations"""
 
     def __init__(self, env, node_class, board_size, actor_critic_network, device):
         super(GuidedMonteCarloPlayTree, self).__init__(env, node_class, board_size)
@@ -244,7 +250,7 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
         possible_actions = node.possible_actions()
         possible_actions_tensor = torch.from_numpy(possible_actions).to(self.device).view(-1, self.board_size, self.board_size) 
         probs_tensor *= possible_actions_tensor
-        probs_tensor = probs_tensor.view(1, self.board_size, self.board_size).squeeze()
+        probs_tensor = probs_tensor.view(-1, self.board_size, self.board_size).squeeze()
 
         return probs_tensor / probs_tensor.sum()
     
@@ -258,6 +264,8 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
         actions = np.argwhere(probs_tensor>0).tolist()
         probs = np.array([probs_tensor[m[0], m[1]] for m in actions])
         probs /= np.sum(probs)
+        if len(probs) == 0:
+            return None, 1.0
         index = np.random.choice(np.arange(len(probs)), p=probs)
 
         return actions[index], probs[index]
@@ -265,15 +273,9 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
     def uct(self, node, c=MCTS_C):
         N_v = node.number_of_visits + 1
         N_v_parent = node.parent.number_of_visits + 1
-
-        # TODO: test
         V_current = self.estimate_node_value(node)
-        for child in node.children:
-            V_current -= self.estimate_node_value(child)
-        
-        result = V_current/N_v + c * np.sqrt(np.log(N_v_parent)/N_v) * node.prob
 
-        return result
+        return np.sum(V_current * node.prob + c*np.sqrt(np.log(N_v_parent)/N_v))
 
     """Estimate node value with neural network"""
     def estimate_node_value(self, node):
@@ -296,10 +298,7 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             terminal_node = self.simulate(self.root_node)
             last_player = terminal_node.current_player()
             winning_player = np.sign(self.evaluate_node(terminal_node))
-            if last_player == winning_player:
-                score = 1
-            else:
-                score = -1
+            score = (-1)**(1-int(last_player == winning_player))
 
             trajectory = terminal_node.unroll()
             print("number of actions: ", len(trajectory), )
@@ -308,12 +307,14 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             states_tensor = torch.from_numpy(states).float().to(self.device)
             probs, values = self.actor_critic_network(states_tensor)
 
-            loss_term_1 = (values - score).pow(2) #- (probs * torch.log(probs)).sum()).sum()
+            loss_term_1 = (values - score).pow(2) 
             loss_term_2 = 0
             for i, node in enumerate(trajectory):
                 if node.action is not None:
                     prob = probs[i, node.action[0], node.action[1]]
                     loss_term_2 += node.prob * torch.log(prob+1e-5)
+                else:
+                    pass
             loss = (loss_term_1 - loss_term_2).sum()
 
             self.optimizer.zero_grad()

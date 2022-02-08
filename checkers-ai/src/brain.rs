@@ -1,7 +1,7 @@
 use rand;
 use rand::{distributions::WeightedIndex, prelude::Distribution};
 use tch;
-use tch::{nn, nn::Module, nn::OptimizerConfig, Device};
+use tch::{nn, Device};
 
 use checkers_core::game;
 use checkers_core::gym_env;
@@ -63,15 +63,9 @@ impl nn::Module for ActorCritic {
 
 impl Brain {
     pub fn new() -> Brain {
-        // let mut model =
-        //     tch::CModule::load("C:\\Users\\Sergei\\git\\checkers\\checkers-ai\\actor_network.pt")
-        //         .unwrap();
-
-        // model.to(tch::Device::Cpu, tch::kind::Kind::Float, true);
-
         let mut vs = nn::VarStore::new(Device::Cpu);
         let model = ActorCritic::new(&vs.root());
-        vs.load("C:\\Users\\Sergei\\git\\checkers\\checkers-ai\\actor_network.pt");
+        vs.load("actor_network.pt");
 
         Brain { model }
     }
@@ -82,7 +76,7 @@ impl Brain {
             game::Color::White => -1,
         };
 
-        let mut input = tch::Tensor::zeros(&[8, 8], tch::kind::FLOAT_CPU);
+        let input = tch::Tensor::zeros(&[8, 8], tch::kind::FLOAT_CPU);
 
         for p in state.pieces.iter() {
             let value = (multiplier
@@ -92,8 +86,8 @@ impl Brain {
                 }) as f32;
 
             let index = tch::Tensor::of_slice(&[p.x, p.y]).to_kind(tch::Kind::Int64);
-            let mut tensor = input.index_select(1, &index);
-            tensor = tch::Tensor::of_slice(&[value]);
+            let mut _tensor = input.index_select(1, &index);
+            _tensor = tch::Tensor::of_slice(&[value]);
         }
 
         let input = input.unsqueeze(1);
