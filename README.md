@@ -362,6 +362,12 @@ class ActorCritic(nn.Module):
 
 ```cargo build``` to build all binaries.
 
+## 4.2 Training a model
+
+1. Start a game logic rpc server ```cargo run --bin checkers-server```
+2. Train a model in jupyter notebook checkers-ai/python/MTSC-Ugolki.ipynb
+3. Copy model to build-directory/assets
+
 ***
 
 ## Results 
