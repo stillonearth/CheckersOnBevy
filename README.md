@@ -251,15 +251,17 @@ A node N on tree T is characterized by:
 
 **Vanilla Monte-Carlo Play Tree Algorithm**
 
-1. Traverse tree from given node `N` to leaf node `L` using `traverse policy` — non-stochastic
-2. From a leaf node `L` rollout `n` trajectories until terminal node is reached or computation budged is exhausted
-3. Back-propagate terminal node result through from `L` to root node `R`
+1. Traverse tree from given node `N` to leaf node `L` using *traverse policy* — non-stochastic
+2. From a leaf node `L` rollout `n` trajectories until terminal node is reached or computation budged is exhausted using *rollout policy* — stochastic
+3. Back-propagate terminal node result through from `L` to root node `R` — visitation counts and values
 
-Traverse Policy: among node's children chose one with highest Upper Confidence Bound value ```Q/(N.N+1) + sqrt(c*log(N.parent.N+1)/(N.N+1))``` where ```c=sqrt(2)```. See [2] for details.
+*Traverse policy*: among node's children chose one with highest Upper Confidence Bound value ```Q/(N.N+1) + sqrt(c*log(N.parent.N+1)/(N.N+1))``` where ```c=sqrt(2)``` [2]
+
+*Rollout policy*: pick unvisited children node randomly.
 
 #### 3.1.2 AlphaZero
 
-Alpha-zero improves on vanilla MCST by introducing two-headed neural network to evaluate node's value (predict who's winning) and suggest actions to maximize node's value function. See [2] for details and ```checkers-ai/monte_carlo_tree.py``` for implementation.
+Alpha-zero improves on vanilla MCST by introducing two-headed neural network to evaluate node's value (predict who's winning) and suggest actions to maximize node's value function. This project uses previous work [2] implementation of AlphaZero ```checkers-ai/python/monte_carlo_tree.py```
 
 ### 3.1.2.1 Loss Function
 
