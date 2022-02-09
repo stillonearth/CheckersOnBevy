@@ -10,7 +10,7 @@ February 2022
 
 This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch. 
 
-In the first part of this project we will implement a Checkers Ugolki game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust environment targeting Desktop (Windows, Linux) and Web (wasm).
+In the first part of this project we will implement a Checkers Ugolki game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust environment targeting Desktop (Windows, Linux).
 
 ### Project Goals
 
@@ -313,8 +313,6 @@ class ActorCritic(nn.Module):
 ## 4. Production
 
 ## 4.1 Deploying to Desktop (Windows)
-## 4.1 Deploying to Web Assembly (wasm)
-## 4.1 Deploying to Mobile (Android)
 
 ***
 
@@ -328,14 +326,18 @@ According to [6] over 1700 years are required to reproduce Google AlphaZero weig
 
 #### Go
 
+Previous work [2] with some fixes with  network architecture changes [5]: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Go.ipynb
+
 #### Checkers Ugolki
+
+Python Jupyter Notebook with training details: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Ugolki.ipynb
 
 ### Rust, Bevy and Torch 
 
 Subjective state of these instruments (February 2022):
 
 * **Rust & Bevy:**  Bevy is suitable for implementing novel training environments because of stability, memory safety and broad ecosystem of plugins. Bevy doesn't cost you anything, distributed with double MIT, Apache 2.0 and can be freely used in research and production. It can also target Web, Desktop and Mobile making it prime choice for rapid prototyping.
-* **PyTorch:** Has been stable enough that code from 2019 has been used with minor modifications. Deploying to mobile is still a struggle.
+* **PyTorch:** Has been stable enough that code from 2019 has been used with minor modifications. Deploying to mobile is still a struggle. wasm isn't a option for model deployment too, but there is option of ONNX.js for javascript model deployment.
 
 ***
 
