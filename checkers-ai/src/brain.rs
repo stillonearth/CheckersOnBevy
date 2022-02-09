@@ -91,11 +91,9 @@ impl Brain {
         }
 
         let input = input.unsqueeze(1);
-
         let result = input.apply(&self.model).squeeze();
 
         let allowed_moves = state.moveset;
-
         let mut actions: Vec<(u8, u8, u8, u8)> = Vec::new();
         let mut weights: Vec<i32> = Vec::new();
 

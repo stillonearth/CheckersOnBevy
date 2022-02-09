@@ -15,6 +15,9 @@ class Env:
         response = self.stub.Reset(environment_pb2.ResetRequest(state=state_json))
         return json.loads(response.json)
 
+    def set_state(self, state):
+        return self.reset(state)
+
     def step(self, action):
         response = self.stub.Step(environment_pb2.StepRequest(action=json.dumps(action)))
         state = json.loads(response.json)

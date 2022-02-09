@@ -80,7 +80,7 @@ class RandomPlayTree:
         prep_action = node.prepare_action(action)
         state, reward, done, _info = self.env.step(prep_action)
         
-        existing_nodes = list(filter(lambda n: n.action == action, node.children))
+        existing_nodes = list(filter(lambda n: np.all(n.action == action), node.children))
         
         # Whether this node has been already visited before
         if len(existing_nodes):
@@ -248,21 +248,21 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
 
     def correct_probs_with_possible_actions(self, node, probs_tensor):
         possible_actions = node.possible_actions()
-        possible_actions_tensor = torch.from_numpy(possible_actions).to(self.device).view(-1, self.board_size, self.board_size) 
+        possible_actions_tensor = torch.from_numpy(possible_actions).to(self.device).view(-1, self.board_size, self.board_size, self.board_size, self.board_size) 
         probs_tensor *= possible_actions_tensor
-        probs_tensor = probs_tensor.view(-1, self.board_size, self.board_size).squeeze()
+        probs_tensor = probs_tensor.view(-1, self.board_size, self.board_size, self.board_size, self.board_size).squeeze()
 
         return probs_tensor / probs_tensor.sum()
     
     def rollout_policy(self, node):
         
-        state = node.prepared_game_state()
+        state = node.prepare_state()
         state_tensor = torch.from_numpy(state).float().to(self.device).unsqueeze(0)
         probs_tensor, _ = self.actor_critic_network(state_tensor)
         probs_tensor = self.correct_probs_with_possible_actions(node, probs_tensor) \
             .cpu().detach().numpy()
         actions = np.argwhere(probs_tensor>0).tolist()
-        probs = np.array([probs_tensor[m[0], m[1]] for m in actions])
+        probs = np.array([probs_tensor[m[0], m[1], m[2], m[3]] for m in actions])
         probs /= np.sum(probs)
         if len(probs) == 0:
             return None, 1.0
@@ -303,7 +303,7 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             trajectory = terminal_node.unroll()
             print("number of actions: ", len(trajectory), )
             
-            states = np.array([node.prepared_game_state(terminal_node.current_player()) for node in trajectory])
+            states = np.array([node.prepare_state(terminal_node.current_player()) for node in trajectory])
             states_tensor = torch.from_numpy(states).float().to(self.device)
             probs, values = self.actor_critic_network(states_tensor)
 
@@ -311,7 +311,7 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             loss_term_2 = 0
             for i, node in enumerate(trajectory):
                 if node.action is not None:
-                    prob = probs[i, node.action[0], node.action[1]]
+                    prob = probs[i, node.action[0], node.action[1], node.action[2], node.action[3]]
                     loss_term_2 += node.prob * torch.log(prob+1e-5)
                 else:
                     pass
@@ -358,30 +358,6 @@ class Node:
         
     def add_child(self, node):
         self.children.append(node)
-
-    def prepared_game_state(self, player=None):
-        """
-        Prepare game state X from perspective of current player
-        [
-            [ 1 -1 -1 ]
-            [ 1  0  0 ]
-            [ 0  0 -1 ]
-        ]
-
-        
-        Where  
-            1:  current player
-            -1: opposing player
-            
-        """
-
-        if player == None:
-            player = self.current_player()
-
-        # take advantage of game symmetry        
-        state = self.blacks() - self.whites() if player == 1 else self.whites() - self.blacks()
-
-        return state
 
     def possible_actions(self, player=None, raw=False):
         """List of possible next actions"""
