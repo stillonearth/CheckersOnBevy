@@ -316,6 +316,8 @@ class ActorCritic(nn.Module):
 
 ## 4.1 Deploying to Desktop (Windows)
 
+```cargo build``` to build all binaries.
+
 ***
 
 ## Results 
