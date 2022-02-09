@@ -229,11 +229,9 @@ Monte-Carlo Search Tree is known method for solving such games. For games with h
 
 ### 3.1 Mathematical Models
 
-#### 3.1.1 Monte-Carlo Search Trees
+#### 3.1.1 Monte-Carlo Tree Search
 
-![MCST](https://images.novatech.co.uk/2020/blog/monte-carlo-search-tree-algorithm.png)
-
-MCST algorithm operates on game trees and doesn't need to know game rules. Via self-play it can discover strategies which with sufficient amount of compute outperform human players. [3]
+MCTS algorithm operates on game trees and doesn't need to know game rules. Via self-play it can discover strategies which with sufficient amount of compute outperform human players. [3]
 
 We organize sequence of moves into tree structure. I.e. for each game state node in tree there are n branches where n is number of allowed actions from that state.
 
@@ -249,19 +247,64 @@ A node N on tree T is characterized by:
 |N |num visits|
 
 
-**Vanilla Monte-Carlo Play Tree Algorithm**
+**Algorithm**
 
-1. Traverse tree from given node `N` to leaf node `L` using *traverse policy* — non-stochastic
-2. From a leaf node `L` rollout `n` trajectories until terminal node is reached or computation budged is exhausted using *rollout policy* — stochastic
+1. Traverse tree from given node `N` to leaf node `L` using *traverse policy* — non-stochastic policy
+2. From a leaf node `L` rollout `n` trajectories until terminal node is reached or computation budged is exhausted using *rollout policy* — stochastic policy
 3. Back-propagate terminal node result through from `L` to root node `R` — visitation counts and values
 
 *Traverse policy*: among node's children chose one with highest Upper Confidence Bound value ```Q/(N.N+1) + sqrt(c*log(N.parent.N+1)/(N.N+1))``` where ```c=sqrt(2)``` [2]
+
+UCT weights used to choose nodes during traverse:
+
+```python
+def uct(self, node, c=MCTS_C):
+    if node.current_player() == 1:
+        Q_v = node.q_black
+    else:
+        Q_v = node.q_white
+    N_v = node.number_of_visits + 1
+    N_v_parent = node.parent.number_of_visits + 1
+```
 
 *Rollout policy*: pick unvisited children node randomly.
 
 #### 3.1.2 AlphaZero
 
 Alpha-zero improves on vanilla MCST by introducing two-headed neural network to evaluate node's value (predict who's winning) and suggest actions to maximize node's value function. This project uses previous work [2] implementation of AlphaZero ```checkers-ai/python/monte_carlo_tree.py```
+
+**Algorithm**
+
+AlphaZero uses slightly modified metric to choose nodes during traverse:
+
+```python
+def uct(self, node, c=MCTS_C):
+    N_v = node.number_of_visits + 1
+    N_v_parent = node.parent.number_of_visits + 1
+    V_current = self.estimate_node_value(node)
+
+    return np.sum(V_current * node.prob + c*np.sqrt(np.log(N_v_parent)/N_v))
+```
+
+During rollout we use neural network to choose actions with higher probabilities to maximize value function:
+
+```python
+def rollout_policy(self, node):
+    
+    state = node.prepare_state()
+    state_tensor = torch.from_numpy(state).float().to(self.device).unsqueeze(0)
+    probs_tensor, _ = self.actor_critic_network(state_tensor)
+    probs_tensor = self.correct_probs_with_possible_actions(node, probs_tensor) \
+        .cpu().detach().numpy()
+    actions = np.argwhere(probs_tensor>0).tolist()
+    probs = np.array([probs_tensor[m[0], m[1], m[2], m[3]] for m in actions])
+    probs /= np.sum(probs)
+    if len(probs) == 0:
+        return None, 1.0
+    index = np.random.choice(np.arange(len(probs)), p=probs)
+
+    return actions[index], probs[index]
+```
 
 ### 3.1.2.1 Loss Function
 
