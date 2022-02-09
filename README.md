@@ -323,16 +323,16 @@ import torch.nn.functional as F
 
 class ActorCritic(nn.Module):
 
-    def __init__(self, board_size=8):
+    def __init__(self, board_size=BOARD_SIZE):
         super(ActorCritic, self).__init__()
         
         self.board_size = board_size
         self.conv1 = nn.Conv2d(1, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.conv4 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.layer1 = nn.Linear(128, 64)
-        self.layer2 = nn.Linear(128, 1)
+        self.conv4 = nn.Conv2d(128, 8192, kernel_size=3, padding=1)
+        self.layer1 = nn.Linear(8192, 4096)
+        self.layer2 = nn.Linear(8192, 1)
         
     def forward(self, x):
 
@@ -345,12 +345,13 @@ class ActorCritic(nn.Module):
         x = F.relu(self.conv4(x))
         x = F.max_pool2d(x, 2)
         x = F.dropout(x, p=0.2, training=self.training)
-        x = x.view(-1, 128)
+        x = x.view(-1, 8192)
         
         prob = F.hardsigmoid(self.layer1(x))
         value = F.hardtanh(self.layer2(x))
 
-        return prob.view(-1, self.board_size, self.board_size), value.view(-1, 1)
+        return prob.view(-1, 8, 8, 8, 8), value.view(-1, 1)
+
 ```
 
 ***
