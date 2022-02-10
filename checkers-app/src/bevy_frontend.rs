@@ -425,12 +425,7 @@ fn button_system(
 }
 
 /// Update text with the correct turn
-fn next_move_text_update(
-    game: Res<game::Game>,
-    mut app_state: ResMut<State<AppState>>,
-    mut text_query: Query<(&mut Text, &NextMoveText)>,
-    mut button_query: Query<(&mut Button)>,
-) {
+fn next_move_text_update(game: Res<game::Game>, mut text_query: Query<(&mut Text, &NextMoveText)>) {
     let game = game;
 
     for (mut text, _tag) in text_query.iter_mut() {
@@ -445,8 +440,6 @@ fn next_move_text_update(
         .to_string();
         text.sections[0].value = str;
     }
-
-    for (mut button) in button_query.iter_mut() {}
 }
 
 // AI -- moving in game
@@ -499,7 +492,6 @@ pub fn computer_turn(
 
 fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Option<Entity> {
     for event in event_reader.iter() {
-        println!("{:?}", event);
         match event {
             PickingEvent::Selection(selection_event) => match selection_event {
                 SelectionEvent::JustSelected(selection_event) => {

@@ -15,9 +15,10 @@ struct ActorCritic {
     conv1: nn::Conv2D,
     conv2: nn::Conv2D,
     conv3: nn::Conv2D,
+    conv4: nn::Conv2D,
 
-    act_conv1: nn::Conv2D,
-    act_fc1: nn::Linear,
+    layer1: nn::Linear,
+    layer2: nn::Linear,
 }
 
 impl ActorCritic {
@@ -27,18 +28,21 @@ impl ActorCritic {
             ..Default::default()
         };
 
-        let conv1 = nn::conv2d(vs, 1, 32, 5, conv2d_cfg);
-        let conv2 = nn::conv2d(vs, 32, 64, 3, conv2d_cfg);
-        let conv3 = nn::conv2d(vs, 64, 128, 3, conv2d_cfg);
+        let conv1 = nn::conv2d(vs, 1, 64, 3, conv2d_cfg);
+        let conv2 = nn::conv2d(vs, 64, 128, 3, conv2d_cfg);
+        let conv3 = nn::conv2d(vs, 128, 128, 3, conv2d_cfg);
+        let conv4 = nn::conv2d(vs, 128, 128, 3, conv2d_cfg);
 
-        let act_conv1 = nn::conv2d(vs, 128, 4, 1, conv2d_cfg);
-        let act_fc1 = nn::linear(vs, 256, 4096, Default::default());
+        let layer1 = nn::linear(vs, 8192, 4096, Default::default());
+        let layer2 = nn::linear(vs, 8192, 1, Default::default());
+
         ActorCritic {
             conv1,
             conv2,
             conv3,
-            act_conv1,
-            act_fc1,
+            conv4,
+            layer1,
+            layer2,
         }
     }
 }
@@ -47,14 +51,23 @@ impl nn::Module for ActorCritic {
     fn forward(&self, xs: &tch::Tensor) -> tch::Tensor {
         let x = xs.view([-1, 1, 8, 8]);
         let x = x.apply(&self.conv1).relu();
+
         let x = x.apply(&self.conv2).relu();
+
+        println!("{:?}", x.size());
+
         let x = x.apply(&self.conv3).relu();
-        let x = x.apply(&self.act_conv1).relu();
+
+        println!("{:?}", x.size());
+
+        let x = x.apply(&self.conv4).relu();
+
+        println!("{:?}", x.size());
 
         let x = x
-            .view([-1, 256])
-            .apply(&self.act_fc1)
-            .sigmoid()
+            .view([-1, 8192])
+            .apply(&self.layer1)
+            .hardsigmoid()
             .view([8, 8, 8, 8]);
 
         return x;
@@ -65,7 +78,7 @@ impl Brain {
     pub fn new() -> Brain {
         let mut vs = nn::VarStore::new(Device::Cpu);
         let model = ActorCritic::new(&vs.root());
-        vs.load("actor_network.pt");
+        vs.load("checkers.pt");
 
         Brain { model }
     }

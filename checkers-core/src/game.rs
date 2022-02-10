@@ -290,7 +290,7 @@ impl Game {
             .filter(|p| (p.color == Color::Black) && piece_in_set(p, white_start_positions()))
             .count();
 
-        if number_of_whites == 1 || number_of_blacks == 1 {
+        if number_of_whites == 9 || number_of_blacks == 9 {
             return match self.state.turn.color {
                 Color::White => GameTermination::BlackMoveLimit,
                 Color::Black => GameTermination::WhiteMoveLimit,
