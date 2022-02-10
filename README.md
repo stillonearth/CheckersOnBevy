@@ -332,7 +332,6 @@ class ActorCritic(nn.Module):
         self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
         self.conv4 = nn.Conv2d(128, 8192, kernel_size=3, padding=1)
         self.layer1 = nn.Linear(8192, 4096)
-        self.layer2 = nn.Linear(8192, 1)
         
     def forward(self, x):
 
@@ -351,7 +350,6 @@ class ActorCritic(nn.Module):
         value = F.hardtanh(self.layer2(x))
 
         return prob.view(-1, 8, 8, 8, 8), value.view(-1, 1)
-
 ```
 
 ***
@@ -377,6 +375,10 @@ class ActorCritic(nn.Module):
 Google-produced Alpha-Zero trained on Google TPUs which faster than consumer-available hardware. To achieve human and above-human performance significant compute time is needed on consumer hardware. In this project network is trained to validate performance on Go Environment [2] for 1000 iterations and then same network is trained for game of Checkers.
 
 According to [6] over 1700 years are required to reproduce Google AlphaZero weights on consumer hardware, which makes reproducibility a problem.
+
+![training_plot](https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/plots/checkers-training-200-eps.png?raw=true)
+
+As of 02/10/2022 training results are unsatisfactory. Further training for at least 5000eps is required to evaluate method feasibility. One of concerns that it may require sufficient amount of training (> 1 week of real machine time).
 
 #### Go
 
