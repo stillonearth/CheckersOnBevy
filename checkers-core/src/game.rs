@@ -9,15 +9,13 @@ pub enum GameTermination {
     White,
     Black,
     Draw,
-    WhiteMoveLimit,
-    BlackMoveLimit,
     Unterminated,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum MoveType {
     Invalid,
-    JumpOver,
+    Take,
     Regular,
     Pass,
 }
@@ -55,9 +53,16 @@ impl PlayerTurn {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
+pub enum PieceType {
+    Normal,
+    King,
+}
+
 #[derive(Component, Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct Piece {
     pub color: Color,
+    pub piece_type: PieceType,
     pub y: u8,
     pub x: u8,
     pub id: u8,
@@ -84,34 +89,48 @@ impl Piece {
             return MoveType::Invalid;
         }
 
-        let collision_count =
-            self.is_path_empty((self.x, self.y), (new_square.x, new_square.y), pieces);
+        let collision_count = self
+            .path_collisions((self.x, self.y), (new_square.x, new_square.y), pieces)
+            .len();
 
         // move to empty square
         if collision_count == 0 {
-            let horizontal_move =
-                (self.x as i8 - new_square.x as i8).abs() == 1 && (self.y == new_square.y);
-            let vertical_move =
-                (self.y as i8 - new_square.y as i8).abs() == 1 && (self.x == new_square.x);
             let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
                 == (self.x as i8 - new_square.x as i8).abs()
                 && (self.x as i8 - new_square.x as i8).abs() == 1;
 
-            if horizontal_move || vertical_move || diagonal_move {
+            let direction = (new_square.x as i8 - self.x as i8).signum();
+
+            if diagonal_move
+                && ((self.piece_type == PieceType::Normal
+                    && self.color == Color::Black
+                    && direction == -1)
+                    || (self.piece_type == PieceType::Normal
+                        && self.color == Color::White
+                        && direction == 1)
+                    || self.piece_type == PieceType::King)
+            {
                 return MoveType::Regular;
             } else {
                 return MoveType::Invalid;
             }
         } else if collision_count == 1 {
-            let horizontal_move =
-                (self.x as i8 - new_square.x as i8).abs() == 2 && (self.y == new_square.y);
-            let vertical_move =
-                (self.y as i8 - new_square.y as i8).abs() == 2 && (self.x == new_square.x);
             let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
                 == (self.x as i8 - new_square.x as i8).abs()
                 && (self.x as i8 - new_square.x as i8).abs() == 2;
-            if horizontal_move || vertical_move || diagonal_move {
-                return MoveType::JumpOver;
+
+            let direction = (new_square.x as i8 - self.x as i8).signum();
+
+            if diagonal_move
+                && ((self.piece_type == PieceType::Normal
+                    && self.color == Color::Black
+                    && direction == -1)
+                    || (self.piece_type == PieceType::Normal
+                        && self.color == Color::White
+                        && direction == 1)
+                    || self.piece_type == PieceType::King)
+            {
+                return MoveType::Take;
             } else {
                 return MoveType::Invalid;
             }
@@ -120,58 +139,35 @@ impl Piece {
         }
     }
 
-    pub fn is_path_empty(&self, begin: (u8, u8), end: (u8, u8), pieces: &Vec<Piece>) -> u8 {
-        let mut collision_count: u8 = 0;
-        // Same column
-        if begin.0 == end.0 {
-            for piece in pieces {
-                if piece.x == begin.0
-                    && ((piece.y > begin.1 && piece.y < end.1)
-                        || (piece.y > end.1 && piece.y < begin.1))
-                {
-                    collision_count += 1;
-                }
-            }
-        }
-        // Same row
-        if begin.1 == end.1 {
-            for piece in pieces {
-                if piece.y == begin.1
-                    && ((piece.x > begin.0 && piece.x < end.0)
-                        || (piece.x > end.0 && piece.x < begin.0))
-                {
-                    collision_count += 1;
-                }
-            }
-        }
-
+    pub fn path_collisions(
+        &self,
+        begin: (u8, u8),
+        end: (u8, u8),
+        pieces: &Vec<Piece>,
+    ) -> Vec<Piece> {
+        let mut collisions: Vec<Piece> = Vec::new();
         // Diagonals
         let x_diff = (begin.0 as i8 - end.0 as i8).abs();
         let y_diff = (begin.1 as i8 - end.1 as i8).abs();
         if x_diff == y_diff {
             for i in 1..x_diff {
                 let pos = if begin.0 < end.0 && begin.1 < end.1 {
-                    // left bottom - right top
                     (begin.0 + i as u8, begin.1 + i as u8)
                 } else if begin.0 < end.0 && begin.1 > end.1 {
-                    // left top - right bottom
                     (begin.0 + i as u8, begin.1 - i as u8)
                 } else if begin.0 > end.0 && begin.1 < end.1 {
-                    // right bottom - left top
                     (begin.0 - i as u8, begin.1 + i as u8)
                 } else {
-                    // begin.0 > end.0 && begin.1 > end.1
-                    // right top - left bottom
                     (begin.0 - i as u8, begin.1 - i as u8)
                 };
 
-                if find_piece_at_position(pos, pieces).is_some() {
-                    collision_count += 1;
+                if let Some(piece) = find_piece_at_position(pos, pieces) {
+                    collisions.push(piece);
                 }
             }
         }
 
-        return collision_count;
+        return collisions;
     }
 }
 
@@ -199,8 +195,9 @@ impl Square {
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 pub struct GameState {
     pub pieces: Vec<Piece>,
+    pub removed_pieces: Vec<Piece>,
     pub turn: PlayerTurn,
-    pub moveset: [Vec<Position>; 18],
+    pub moveset: [Vec<Position>; 24],
 }
 
 #[derive(Debug, Clone)]
@@ -217,6 +214,7 @@ impl Default for Game {
         for (x, y) in white_start_positions() {
             pieces.push(Piece {
                 color: Color::White,
+                piece_type: PieceType::Normal,
                 x,
                 y,
                 id: i,
@@ -227,6 +225,7 @@ impl Default for Game {
         for (x, y) in black_start_positions() {
             pieces.push(Piece {
                 color: Color::Black,
+                piece_type: PieceType::Normal,
                 x,
                 y,
                 id: i,
@@ -247,6 +246,7 @@ impl Default for Game {
             squares,
             state: GameState {
                 pieces,
+                removed_pieces: Vec::new(),
                 moveset: Default::default(),
                 turn: PlayerTurn {
                     color: Color::White,
@@ -267,33 +267,25 @@ impl Game {
     }
 
     pub fn check_termination(&self) -> GameTermination {
-        let piece_in_set = |p: &Piece, collection: Vec<Position>| -> bool {
-            let cnt = collection
-                .iter()
-                .filter(|e| e.0 == p.x && e.1 == p.y)
-                .count();
-            return cnt > 0;
-        };
-
         // Game end condition check
         let number_of_whites = self
             .state
             .pieces
             .iter()
-            .filter(|p| (p.color == Color::White) && piece_in_set(p, black_start_positions()))
+            .filter(|p| (p.color == Color::White))
             .count();
 
         let number_of_blacks = self
             .state
             .pieces
             .iter()
-            .filter(|p| (p.color == Color::Black) && piece_in_set(p, white_start_positions()))
+            .filter(|p| (p.color == Color::Black))
             .count();
 
-        if number_of_whites == 9 || number_of_blacks == 9 {
+        if number_of_whites == 0 || number_of_blacks == 0 {
             return match self.state.turn.color {
-                Color::White => GameTermination::BlackMoveLimit,
-                Color::Black => GameTermination::WhiteMoveLimit,
+                Color::White => GameTermination::White,
+                Color::Black => GameTermination::Black,
             };
         }
 
@@ -324,11 +316,43 @@ impl Game {
         }
 
         match piece.is_move_valid(square, &self.state.pieces) {
-            MoveType::JumpOver => {
+            MoveType::Take => {
+                move_type = MoveType::Take;
+                let collision = piece.path_collisions(
+                    (piece.x, piece.y),
+                    (square.x, square.y),
+                    &self.state.pieces,
+                )[0];
+
                 piece.move_to_square(square);
-                move_type = MoveType::JumpOver;
-                self.state.turn.chain_count += 1;
-                self.state.turn.chain_piece_id = piece.id as i16;
+
+                if collision.color != piece.color {
+                    self.state.removed_pieces.push(collision);
+                    self.state.pieces.retain(|p| p.id != collision.id);
+                }
+
+                let moveset = self.possible_moves();
+                let moveset = &moveset[piece.id as usize];
+
+                if moveset
+                    .iter()
+                    .filter(|m| {
+                        let sq = self
+                            .squares
+                            .iter()
+                            .find(|s| (s.x == m.0 && s.y == m.1))
+                            .unwrap();
+                        return piece.is_move_valid(*sq, &self.state.pieces) == MoveType::Take;
+                    })
+                    .count()
+                    > 0
+                {
+                    self.state.turn.chain_count += 1;
+                    self.state.turn.chain_piece_id = piece.id as i16;
+                } else {
+                    move_type = MoveType::Regular;
+                    self.state.turn.change();
+                }
             }
             MoveType::Regular => {
                 piece.move_to_square(square);
@@ -346,23 +370,27 @@ impl Game {
             if p.id == piece.id {
                 p.x = piece.x;
                 p.y = piece.y;
+
+                if (p.color == Color::White && p.x == 7) || (p.color == Color::Black && p.x == 0) {
+                    p.piece_type = PieceType::King;
+                }
             }
         }
 
         return (move_type, &self.state, self.check_termination());
     }
 
-    pub fn possible_moves(&self) -> [Vec<Position>; 18] {
-        let mut moveset: [Vec<Position>; 18] = Default::default();
+    pub fn possible_moves(&self) -> [Vec<Position>; 24] {
+        let mut moveset: [Vec<Position>; 24] = Default::default();
 
-        for i in 0..18 {
-            let p = self
-                .state
-                .pieces
-                .iter()
-                .filter(|p| p.id == i)
-                .nth(0)
-                .unwrap();
+        for i in 0..24 {
+            let p = self.state.pieces.iter().find(|p| p.id == i);
+
+            if p.is_none() {
+                continue;
+            }
+
+            let p = p.unwrap();
 
             if self.state.turn.chain_count > 0 && (p.id as i16) != self.state.turn.chain_piece_id {
                 continue;
@@ -373,7 +401,7 @@ impl Game {
 
             for s in self.squares.iter() {
                 match p.is_move_valid(*s, &self.state.pieces) {
-                    MoveType::JumpOver | MoveType::Regular => {
+                    MoveType::Take | MoveType::Regular => {
                         let position: Position = (s.x, s.y);
                         moveset[i as usize].push(position);
                     }
@@ -399,8 +427,8 @@ pub fn white_start_positions() -> Vec<Position> {
     let mut positions: Vec<Position> = Vec::new();
 
     for i in 0..3 {
-        for j in 5..8 {
-            let p: Position = (i as u8, j as u8);
+        for j in (0..8).step_by(2) {
+            let p: Position = (i as u8, j + (i % 2) as u8);
             positions.push(p);
         }
     }
@@ -412,8 +440,8 @@ pub fn black_start_positions() -> Vec<Position> {
     let mut positions: Vec<Position> = Vec::new();
 
     for i in 5..8 {
-        for j in 0..3 {
-            let p: Position = (i as u8, j as u8);
+        for j in (0..8).step_by(2) {
+            let p: Position = (i as u8, j + (i % 2) as u8);
             positions.push(p);
         }
     }

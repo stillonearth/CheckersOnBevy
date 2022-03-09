@@ -15,7 +15,7 @@ use checkers_core::game;
 // Global Variables
 // ---
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.35);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
@@ -50,6 +50,7 @@ pub struct Materials {
     pub selected_color: Handle<StandardMaterial>,
     pub black_color: Handle<StandardMaterial>,
     pub white_color: Handle<StandardMaterial>,
+    pub blue_color: Handle<StandardMaterial>,
 }
 
 impl FromWorld for Materials {
@@ -63,6 +64,7 @@ impl FromWorld for Materials {
             selected_color: materials_asset.add(bevy::prelude::Color::rgb(0.9, 0.1, 0.1).into()),
             black_color: materials_asset.add(bevy::prelude::Color::rgb(0., 0.1, 0.1).into()),
             white_color: materials_asset.add(bevy::prelude::Color::rgb(1., 0.9, 0.9).into()),
+            blue_color: materials_asset.add(bevy::prelude::Color::rgb(0.2, 0.2, 1.0).into()),
         }
     }
 }
@@ -75,7 +77,6 @@ impl FromWorld for Materials {
 pub enum AppState {
     PlayerTurn,
     ComputerTurn,
-    Idle,
 }
 
 // ---
@@ -140,7 +141,6 @@ fn player_turn(
     mut selections: Query<&mut Selection>,
 ) {
     if *app_state.current() != AppState::PlayerTurn {
-        println!("{:?}", selected_square.entity);
         return;
     }
 
@@ -186,7 +186,10 @@ fn player_turn(
             }
             selected_piece.deselect();
             selected_square.deselect();
-            app_state.set(AppState::ComputerTurn).unwrap();
+
+            if !DEBUG {
+                app_state.set(AppState::ComputerTurn).unwrap();
+            }
         }
         _ => {}
     }
@@ -201,11 +204,11 @@ fn event_square_selected(
 
 fn check_game_termination(game: Res<game::Game>, mut _event_app_exit: ResMut<Events<AppExit>>) {
     match game.check_termination() {
-        game::GameTermination::Black | game::GameTermination::BlackMoveLimit => {
+        game::GameTermination::Black => {
             println!("Black won! Thanks for playing!");
             // event_app_exit.send(AppExit);
         }
-        game::GameTermination::White | game::GameTermination::WhiteMoveLimit => {
+        game::GameTermination::White => {
             println!("White won! Thanks for playing!");
             // event_app_exit.send(AppExit);
         }
@@ -221,24 +224,29 @@ fn update_entity_pieces(
     // events
     mut event_piece_move: EventWriter<EventPieceMove>,
     // queries
-    query: Query<(Entity, &game::Piece)>,
+    mut query: Query<(Entity, &mut Transform, &game::Piece)>,
 ) {
-    for (e, p) in query.iter() {
+    for (e, mut t, p) in query.iter_mut() {
         if !game.is_changed() {
             return;
         }
 
-        let new_piece = game
-            .state
-            .pieces
-            .iter()
-            .filter(|_p| _p.id == p.id)
-            .nth(0)
-            .unwrap();
+        let new_piece = game.state.pieces.iter().find(|_p| _p.id == p.id);
+
+        if new_piece.is_none() {
+            commands.entity(e).despawn();
+            continue;
+        }
+
+        let new_piece = new_piece.unwrap();
 
         if p.x != new_piece.x || p.y != new_piece.y {
             commands.entity(e).insert(*new_piece);
             event_piece_move.send(EventPieceMove(e));
+        }
+
+        if p.piece_type != new_piece.piece_type {
+            t.rotate(Quat::from_rotation_z(-2.0 * 1.57));
         }
     }
 }
@@ -255,7 +263,7 @@ pub fn create_pieces(
         let bundle = PbrBundle {
             mesh: cp_handle.clone(),
             material: match piece.color {
-                game::Color::Black => square_materials.black_color.clone(),
+                game::Color::Black => square_materials.blue_color.clone(),
                 game::Color::White => square_materials.white_color.clone(),
             },
             transform: model_transform(*piece),
@@ -270,13 +278,17 @@ pub fn model_transform(piece: game::Piece) -> Transform {
     let mut transform = Transform::from_translation(piece_translation(piece));
 
     // Rotation
-    transform.rotate(Quat::from_rotation_x(-1.57));
+    if piece.piece_type == game::PieceType::Normal {
+        transform.rotate(Quat::from_rotation_x(1.57));
+    } else {
+        transform.rotate(Quat::from_rotation_x(-1.57));
+    }
     if piece.color == game::Color::Black {
         transform.rotate(Quat::from_rotation_y(-1.57));
     } else {
         transform.rotate(Quat::from_rotation_y(1.57));
     }
-    transform.rotate(Quat::from_rotation_z(3.14));
+    transform.rotate(Quat::from_rotation_z(-3.14));
 
     // Scale
     transform.apply_non_uniform_scale(Vec3::new(0.02, 0.02, 0.02));
@@ -316,7 +328,7 @@ fn highlight_piece(
         } else if piece.color == game::Color::White {
             *material = square_materials.white_color.clone();
         } else {
-            *material = square_materials.black_color.clone();
+            *material = square_materials.blue_color.clone();
         }
     }
 }
@@ -412,7 +424,10 @@ fn button_system(
                 selected_square.entity = None;
                 selected_piece.entity = None;
                 game.state.turn.change();
-                app_state.set(AppState::ComputerTurn).unwrap();
+
+                if !DEBUG {
+                    app_state.set(AppState::ComputerTurn).unwrap();
+                }
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
@@ -582,9 +597,7 @@ pub fn piece_translation(piece: game::Piece) -> Vec3 {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct TransformPositionWithYJumpLens {
-    /// Start value of the translation.
     pub start: Vec3,
-    /// End value of the translation.
     pub end: Vec3,
 }
 
@@ -673,7 +686,6 @@ fn setup(mut commands: Commands) {
 
 pub fn create_bevy_app(game: game::Game) -> App {
     let mut app = App::new();
-    // let game_res: RefMut<_> = game.borrow_mut().;
 
     app.insert_resource(Msaa { samples: 4 })
         // Set WindowDescriptor Resource to change title and size
@@ -696,7 +708,6 @@ pub fn create_bevy_app(game: game::Game) -> App {
         // Application Plugins
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin);
-    // .add_plugin(UIPlugin);
 
     if DEBUG {
         app.add_plugin(WorldInspectorPlugin::new());

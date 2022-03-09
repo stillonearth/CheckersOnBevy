@@ -51,8 +51,6 @@ impl CheckersEnv {
                 game::GameTermination::Black => 10,
                 game::GameTermination::Draw => 0,
                 game::GameTermination::White => -10,
-                game::GameTermination::BlackMoveLimit => 5,
-                game::GameTermination::WhiteMoveLimit => -5,
             },
             is_done: match termination {
                 game::GameTermination::Unterminated => false,
