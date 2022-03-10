@@ -77,6 +77,7 @@ impl FromWorld for Materials {
 pub enum AppState {
     PlayerTurn,
     ComputerTurn,
+    Idle,
 }
 
 // ---
@@ -307,7 +308,7 @@ fn event_piece_moved(
         commands.entity(entity).insert(Animator::new(
             EaseFunction::QuadraticInOut,
             TweeningType::Once {
-                duration: Duration::from_millis(500),
+                duration: Duration::from_millis(10),
             },
             TransformPositionWithYJumpLens {
                 start: transform.translation,

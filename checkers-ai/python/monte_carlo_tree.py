@@ -294,14 +294,12 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
     """
     def train(self, n_iterations):
         for i in range(n_iterations):
-            print("Iteration #", i,)
             terminal_node = self.simulate(self.root_node)
             last_player = terminal_node.current_player()
             winning_player = np.sign(self.evaluate_node(terminal_node))
             score = (-1)**(1-int(last_player == winning_player))
 
             trajectory = terminal_node.unroll()
-            print("number of actions: ", len(trajectory), )
             
             states = np.array([node.prepare_state(terminal_node.current_player()) for node in trajectory])
             states_tensor = torch.from_numpy(states).float().to(self.device)
@@ -320,7 +318,6 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            print("Loss:", loss)
             yield loss
 
 

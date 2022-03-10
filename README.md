@@ -1,4 +1,4 @@
-# Checkers Ugolki game on Rust and Bevy, OpenAI Gym Environment and AI Agent based on Monte Carlo Tree Search (MCTS) with neural heuristics (AlphaZero) on Python and PyTorch
+# Checkers Game on Rust and Bevy, OpenAI Gym Environment and AI Agent based on Monte Carlo Tree Search (MCTS) with neural heuristics (AlphaZero) on Python and PyTorch
 
 **Sergei Surovtsev** <<ssurovsev@gmail.com>>
 <br />
@@ -10,7 +10,7 @@ February 2022
 
 This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch. 
 
-In the first part of this project we will implement a Checkers Ugolki game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust environment targeting Desktop (Windows, Linux).
+In the first part of this project we will implement a classic English checkers game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust environment targeting Desktop (Windows, Linux).
 
 ### Project Goals
 
@@ -27,7 +27,7 @@ In the first part of this project we will implement a Checkers Ugolki game with 
 
 ***
 
-## 1. Making Checkers Ugolki game with Bevy and Rust
+## 1. Making Checkers Game with Bevy and Rust
 
 On high-level project is structured with [workspace](https://doc.rust-lang.org/cargo/reference/manifest.html#the-workspace-field) feature of Cargo.toml.
 
