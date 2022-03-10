@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.insert_resource(grpc_client);
     app.insert_resource(pool);
     app.add_state(bevy_frontend::AppState::Idle);
-    app.insert_resource(StateUpdateTimer(Timer::from_seconds(0.2, true)));
+    app.insert_resource(StateUpdateTimer(Timer::from_seconds(0.01, true)));
     app.add_system(sync_game_state);
     app.run();
 

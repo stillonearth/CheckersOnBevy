@@ -53,16 +53,8 @@ impl nn::Module for ActorCritic {
         let x = x.apply(&self.conv1).relu();
 
         let x = x.apply(&self.conv2).relu();
-
-        println!("{:?}", x.size());
-
         let x = x.apply(&self.conv3).relu();
-
-        println!("{:?}", x.size());
-
         let x = x.apply(&self.conv4).relu();
-
-        println!("{:?}", x.size());
 
         let x = x
             .view([-1, 8192])
