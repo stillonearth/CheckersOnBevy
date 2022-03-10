@@ -3,9 +3,6 @@
 **Sergei Surovtsev** <<ssurovsev@gmail.com>>
 <br />
 February 2022
-
-![Шашка](https://i.ibb.co/WDxxKJD/Screenshot-2022-01-13-140430.png)
-
 ## Project Description
 
 This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch. 
