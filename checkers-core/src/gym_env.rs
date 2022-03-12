@@ -48,9 +48,9 @@ impl CheckersEnv {
             action,
             reward: match termination {
                 game::GameTermination::Unterminated => 0,
-                game::GameTermination::Black => 10,
+                game::GameTermination::Black(num) => num as i8,
                 game::GameTermination::Draw => 0,
-                game::GameTermination::White => -10,
+                game::GameTermination::White(num) => -(num as i8),
             },
             is_done: match termination {
                 game::GameTermination::Unterminated => false,

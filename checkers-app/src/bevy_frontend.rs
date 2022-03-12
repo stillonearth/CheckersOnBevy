@@ -15,7 +15,7 @@ use checkers_core::game;
 // Global Variables
 // ---
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.35);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
@@ -205,11 +205,11 @@ fn event_square_selected(
 
 fn check_game_termination(game: Res<game::Game>, mut _event_app_exit: ResMut<Events<AppExit>>) {
     match game.check_termination() {
-        game::GameTermination::Black => {
+        game::GameTermination::Black(_) => {
             println!("Black won! Thanks for playing!");
             // event_app_exit.send(AppExit);
         }
-        game::GameTermination::White => {
+        game::GameTermination::White(_) => {
             println!("White won! Thanks for playing!");
             // event_app_exit.send(AppExit);
         }

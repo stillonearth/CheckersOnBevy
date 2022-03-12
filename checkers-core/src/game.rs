@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-const MOVE_LIMIT: u8 = 80;
-const CHAIN_LIMIT: u8 = 5;
+const MOVE_LIMIT: u16 = 32;
+const CHAIN_LIMIT: u16 = 5;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 pub enum GameTermination {
-    White,
-    Black,
+    White(u8),
+    Black(u8),
     Draw,
     Unterminated,
 }
@@ -25,8 +25,8 @@ pub type Position = (u8, u8);
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerTurn {
     pub color: Color,
-    pub turn_count: u8,
-    pub chain_count: u8,
+    pub turn_count: u16,
+    pub chain_count: u16,
     pub chain_piece_id: i16,
 }
 
@@ -76,7 +76,7 @@ impl Piece {
 
     pub fn is_move_valid(&self, new_square: Square, pieces: &Vec<Piece>) -> MoveType {
         if self.x == new_square.x && self.y == new_square.y {
-            return MoveType::Pass;
+            return MoveType::Invalid;
         }
 
         let is_square_occupied = pieces
@@ -89,9 +89,10 @@ impl Piece {
             return MoveType::Invalid;
         }
 
-        let collision_count = self
-            .path_collisions((self.x, self.y), (new_square.x, new_square.y), pieces)
-            .len();
+        let collisions =
+            self.path_collisions((self.x, self.y), (new_square.x, new_square.y), pieces);
+
+        let collision_count = collisions.len();
 
         // move to empty square
         if collision_count == 0 {
@@ -130,7 +131,11 @@ impl Piece {
                         && direction == 1)
                     || self.piece_type == PieceType::King)
             {
-                return MoveType::Take;
+                if collisions[0].color != self.color {
+                    return MoveType::Take;
+                } else {
+                    return MoveType::Invalid;
+                }
             } else {
                 return MoveType::Invalid;
             }
@@ -282,18 +287,14 @@ impl Game {
             .filter(|p| (p.color == Color::Black))
             .count();
 
-        if number_of_whites == 0 || number_of_blacks == 0 {
-            return match self.state.turn.color {
-                Color::White => GameTermination::White,
-                Color::Black => GameTermination::Black,
-            };
-        }
-
-        if self.state.turn.turn_count >= MOVE_LIMIT {
+        if self.state.turn.turn_count as u16 > MOVE_LIMIT
+            || number_of_whites == 0
+            || number_of_blacks == 0
+        {
             if number_of_whites > number_of_blacks {
-                return GameTermination::White;
+                return GameTermination::White(number_of_whites as u8);
             } else if number_of_whites < number_of_blacks {
-                return GameTermination::Black;
+                return GameTermination::Black(number_of_blacks as u8);
             } else {
                 return GameTermination::Draw;
             }
@@ -310,7 +311,7 @@ impl Game {
         let mut move_type: MoveType = MoveType::Invalid;
 
         // chain limit met
-        if self.state.turn.chain_count >= CHAIN_LIMIT {
+        if self.state.turn.chain_count > CHAIN_LIMIT {
             self.state.turn.change();
             return (MoveType::Regular, &self.state, self.check_termination());
         }
@@ -326,6 +327,19 @@ impl Game {
 
                 piece.move_to_square(square);
 
+                for p in self.state.pieces.iter_mut() {
+                    if p.id == piece.id {
+                        p.x = piece.x;
+                        p.y = piece.y;
+
+                        if (p.color == Color::White && p.x == 7)
+                            || (p.color == Color::Black && p.x == 0)
+                        {
+                            p.piece_type = PieceType::King;
+                        }
+                    }
+                }
+
                 if collision.color != piece.color {
                     self.state.removed_pieces.push(collision);
                     self.state.pieces.retain(|p| p.id != collision.id);
@@ -337,12 +351,8 @@ impl Game {
                 if moveset
                     .iter()
                     .filter(|m| {
-                        let sq = self
-                            .squares
-                            .iter()
-                            .find(|s| (s.x == m.0 && s.y == m.1))
-                            .unwrap();
-                        return piece.is_move_valid(*sq, &self.state.pieces) == MoveType::Take;
+                        return piece.is_move_valid(Square { x: m.0, y: m.1 }, &self.state.pieces)
+                            == MoveType::Take;
                     })
                     .count()
                     > 0
@@ -356,6 +366,20 @@ impl Game {
             }
             MoveType::Regular => {
                 piece.move_to_square(square);
+
+                for p in self.state.pieces.iter_mut() {
+                    if p.id == piece.id {
+                        p.x = piece.x;
+                        p.y = piece.y;
+
+                        if (p.color == Color::White && p.x == 7)
+                            || (p.color == Color::Black && p.x == 0)
+                        {
+                            p.piece_type = PieceType::King;
+                        }
+                    }
+                }
+
                 move_type = MoveType::Regular;
                 self.state.turn.change();
             }
@@ -364,17 +388,6 @@ impl Game {
                 self.state.turn.change();
             }
             _ => {}
-        }
-
-        for p in self.state.pieces.iter_mut() {
-            if p.id == piece.id {
-                p.x = piece.x;
-                p.y = piece.y;
-
-                if (p.color == Color::White && p.x == 7) || (p.color == Color::Black && p.x == 0) {
-                    p.piece_type = PieceType::King;
-                }
-            }
         }
 
         return (move_type, &self.state, self.check_termination());
@@ -397,7 +410,7 @@ impl Game {
             }
 
             // move to same position is passing a turn
-            moveset[i as usize].push((p.x, p.y) as Position);
+            // moveset[i as usize].push((p.x, p.y) as Position);
 
             for s in self.squares.iter() {
                 match p.is_move_valid(*s, &self.state.pieces) {

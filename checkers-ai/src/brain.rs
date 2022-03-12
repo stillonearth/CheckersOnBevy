@@ -31,10 +31,10 @@ impl ActorCritic {
         let conv1 = nn::conv2d(vs, 1, 64, 3, conv2d_cfg);
         let conv2 = nn::conv2d(vs, 64, 128, 3, conv2d_cfg);
         let conv3 = nn::conv2d(vs, 128, 128, 3, conv2d_cfg);
-        let conv4 = nn::conv2d(vs, 128, 128, 3, conv2d_cfg);
+        let conv4 = nn::conv2d(vs, 128, 256, 3, conv2d_cfg);
 
-        let layer1 = nn::linear(vs, 8192, 4096, Default::default());
-        let layer2 = nn::linear(vs, 8192, 1, Default::default());
+        let layer1 = nn::linear(vs, 256, 4096, Default::default());
+        let layer2 = nn::linear(vs, 256, 1, Default::default());
 
         ActorCritic {
             conv1,
@@ -52,14 +52,14 @@ impl nn::Module for ActorCritic {
         let x = xs.view([-1, 1, 8, 8]);
         let x = x.apply(&self.conv1).relu();
 
-        let x = x.apply(&self.conv2).relu();
-        let x = x.apply(&self.conv3).relu();
-        let x = x.apply(&self.conv4).relu();
+        let x = x.apply(&self.conv2).relu().max_pool2d_default(2);
+        let x = x.apply(&self.conv3).relu().max_pool2d_default(2);
+        let x = x.apply(&self.conv4).relu().max_pool2d_default(2);
 
         let x = x
-            .view([-1, 8192])
+            .view([-1, 256])
             .apply(&self.layer1)
-            .hardsigmoid()
+            .softmax(0, tch::Kind::Float)
             .view([8, 8, 8, 8]);
 
         return x;
@@ -95,8 +95,8 @@ impl Brain {
             _tensor = tch::Tensor::of_slice(&[value]);
         }
 
-        let input = input.unsqueeze(1);
-        let result = input.apply(&self.model).squeeze();
+        let input = input.flip(&[1]).unsqueeze(1);
+        let result = input.apply(&self.model).squeeze().flip(&[1]);
 
         let allowed_moves = state.moveset;
         let mut actions: Vec<(u8, u8, u8, u8)> = Vec::new();

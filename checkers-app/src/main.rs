@@ -20,7 +20,7 @@ fn main() {
     app.insert_resource(brain);
     app.insert_resource(pool);
     app.add_state(bevy_frontend::AppState::PlayerTurn);
-    // app.add_system(bevy_frontend::computer_turn);
+    app.add_system(bevy_frontend::computer_turn);
     app.add_plugin(bevy_frontend::UIPlugin);
     app.run();
 }
