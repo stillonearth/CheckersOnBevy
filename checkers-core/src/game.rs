@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-const MOVE_LIMIT: u16 = 16;
+const MOVE_LIMIT: u16 = 80;
 const CHAIN_LIMIT: u16 = 5;
 
 #[derive(Debug, Serialize, PartialEq)]
