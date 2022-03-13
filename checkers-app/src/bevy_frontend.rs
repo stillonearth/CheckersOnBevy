@@ -225,9 +225,9 @@ fn update_entity_pieces(
     // events
     mut event_piece_move: EventWriter<EventPieceMove>,
     // queries
-    mut query: Query<(Entity, &mut Transform, &game::Piece)>,
+    mut query: Query<(Entity, &mut Visibility, &mut Transform, &game::Piece)>,
 ) {
-    for (e, mut t, p) in query.iter_mut() {
+    for (e, mut v, mut t, p) in query.iter_mut() {
         if !game.is_changed() {
             return;
         }
@@ -235,7 +235,10 @@ fn update_entity_pieces(
         let new_piece = game.state.pieces.iter().find(|_p| _p.id == p.id);
 
         if new_piece.is_none() {
-            commands.entity(e).despawn();
+            // v.is_visible = false;
+            let mut entity = commands.entity(e);
+            entity.despawn();
+            // if entity
             continue;
         }
 
@@ -308,7 +311,7 @@ fn event_piece_moved(
         commands.entity(entity).insert(Animator::new(
             EaseFunction::QuadraticInOut,
             TweeningType::Once {
-                duration: Duration::from_millis(10),
+                duration: Duration::from_millis(200),
             },
             TransformPositionWithYJumpLens {
                 start: transform.translation,

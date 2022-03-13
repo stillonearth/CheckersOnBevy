@@ -6,9 +6,9 @@ import torch
 
 
 MCTS_NUM_SIMULATIONS = 10
-MCTS_ROLLOUT_DEPTH   = 10
+MCTS_ROLLOUT_DEPTH   = 16
 MCTS_C = np.sqrt(2.0)
-LR = 3e-4
+LR = 0.0001
 
 
 class RandomPlayTree:
@@ -307,21 +307,47 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
             self.actor_critic_network.train()
             probs, values = self.actor_critic_network(states_tensor)
 
-            loss_term_1 = (values - score).pow(2)
+            loss_term_1 = (values - score).pow(2).squeeze(1)
             loss_term_2 = torch.zeros((len(trajectory))).to(self.device)
             for i, node in enumerate(trajectory):
-                if node.action is None: continue
                 probs_ = probs[i].flip([1, 3]) if node.current_player() == 1 else probs[i]
-                prob = probs_[node.action[0], node.action[1], node.action[2], node.action[3]]
-                loss_term_2[i] = node.prob * torch.log(prob+1e-5)
-           
-            loss = (loss_term_1 - loss_term_2).sum()
+                parent = node.parent
+                
+                if parent is None:
+                    continue
+
+                for child in parent.children:
+                    prob = probs_[child.action[0], child.action[1], child.action[2], child.action[3]] 
+                    loss_term_2[i] += child.prob * torch.log(prob+1e-5)
+
+            loss = (loss_term_1 - loss_term_2).sum() 
 
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
             print("Loss total:", loss, "score: ", score, "player: ", last_player)
             yield loss
+
+
+class AssessedGuidedMonteCarloPlayTree(GuidedMonteCarloPlayTree):
+    """Assessed MCTS with neural augmentations"""
+
+    def __init__(self, env, node_class, board_size, actor_critic_network, device):
+        super(AssessedGuidedMonteCarloPlayTree, self).__init__(env, node_class, board_size, actor_critic_network, device)
+
+    def pick_action(self, node):
+
+        if node.current_player() == 1:
+            return super(AssessedGuidedMonteCarloPlayTree, self).pick_action(node)
+        else:
+            possible_actions = node.possible_actions_list()
+
+            if len(possible_actions) == 0:
+                return None, 0.0
+            
+            index = np.random.choice(len(possible_actions))
+            return tuple(possible_actions[index]), np.ones(len(possible_actions)) / len(possible_actions)
+
 
 class Node:
     """Game Tree Node"""
