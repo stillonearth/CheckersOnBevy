@@ -6,9 +6,9 @@ import torch
 
 
 MCTS_NUM_SIMULATIONS = 10
-MCTS_ROLLOUT_DEPTH   = 30
+MCTS_ROLLOUT_DEPTH   = 16
 MCTS_C = np.sqrt(2.0)
-LR = 3e-4
+LR = 0.0001
 
 
 class RandomPlayTree:
@@ -200,19 +200,12 @@ class MonteCarloPlayTree(RandomPlayTree):
 
     def rollout(self, node, depth):
         """Rollout a node according to a rollout policy."""
-        if depth > MCTS_ROLLOUT_DEPTH:
-            return node
-
-        if node.is_terminal:
-            return node
-
-        # this is due go environment which implements done wrong
-
+        if depth > MCTS_ROLLOUT_DEPTH: return node
+        if node.is_terminal: return node
+            
         action, prob = self.rollout_policy(node)
-
-        if action is None:
-            return node
-
+        if action is None: return node
+            
         new_node = self.act(node, action, prob)  
         return self.rollout(new_node, depth+1)
 
@@ -258,7 +251,10 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
         
         state = node.prepare_state()
         state_tensor = torch.from_numpy(state).float().to(self.device).unsqueeze(0)
+        self.actor_critic_network.eval()
         probs_tensor, _ = self.actor_critic_network(state_tensor)
+        if node.current_player() == 1:
+            probs_tensor = probs_tensor.flip([1, 3])
         probs_tensor = self.correct_probs_with_possible_actions(node, probs_tensor) \
             .cpu().detach().numpy()
         actions = np.argwhere(probs_tensor>0).tolist()
@@ -277,60 +273,80 @@ class GuidedMonteCarloPlayTree(MonteCarloPlayTree):
 
         return np.sum(V_current * node.prob + c*np.sqrt(np.log(N_v_parent)/N_v))
 
-    """Estimate node value with neural network"""
     def estimate_node_value(self, node):
+        """Estimate node value with neural network"""
+
         state = node.prepare_state()
         state_tensor = torch.from_numpy(state).float().to(self.device).unsqueeze(0)
+        self.actor_critic_network.eval()
         _, v = self.actor_critic_network(state_tensor)
-        return v.detach().cpu().numpy().sum()
+        return v.detach().cpu().numpy()
 
-    """
-    Train guided MCTS
-    AlphaZero algorithm:
-    1. Initialize actor-critic
-    2. Simulate a game
-    3. Compute loss
-    4. Repeat
-    """
     def train(self, n_iterations):
+        """
+        Train guided MCTS
+        AlphaZero algorithm:
+        1. Initialize actor-critic
+        2. Simulate a game
+        3. Compute loss
+        4. Repeat
+        """
+
         for i in range(n_iterations):
             terminal_node = self.simulate(self.root_node)
             last_player = terminal_node.current_player()
-            winning_player = np.sign(self.evaluate_node(terminal_node))
-            score = (-1)**(1-int(last_player == winning_player))
+            score = self.evaluate_node(terminal_node)
+            if score != 0:
+                winning_player = np.sign(score)
+                score = (-1)**(1-int(last_player == winning_player))
 
             trajectory = terminal_node.unroll()
             
             states = np.array([node.prepare_state(terminal_node.current_player()) for node in trajectory])
             states_tensor = torch.from_numpy(states).float().to(self.device)
+            self.actor_critic_network.train()
             probs, values = self.actor_critic_network(states_tensor)
 
-            loss_term_1 = (values - score).pow(2) 
-            loss_term_2 = 0
+            loss_term_1 = (values - score).pow(2).squeeze(1)
+            loss_term_2 = torch.zeros((len(trajectory))).to(self.device)
             for i, node in enumerate(trajectory):
-                if node.action is not None:
-                    prob = probs[i, node.action[0], node.action[1], node.action[2], node.action[3]]
-                    loss_term_2 += node.prob * torch.log(prob+1e-5)
-                else:
-                    pass
-            loss = (loss_term_1 - loss_term_2).sum()
+                probs_ = probs[i].flip([1, 3]) if node.current_player() == 1 else probs[i]
+                parent = node.parent
+                
+                if parent is None:
+                    continue
+
+                for child in parent.children:
+                    prob = probs_[child.action[0], child.action[1], child.action[2], child.action[3]] 
+                    loss_term_2[i] += child.prob * torch.log(prob+1e-5)
+
+            loss = (loss_term_1 - loss_term_2).sum() 
 
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+            print("Loss total:", loss, "score: ", score, "player: ", last_player)
             yield loss
 
 
-def state_to_board(state):
-    board = np.zeros((5, 8, 8))
-    for piece in state['pieces']:
-        if piece['color'] == "Black":
-            board[0, piece['x'], piece['y']] = 1
-        else: 
-            board[1, piece['x'], piece['y']] = 1
-        board[2] = 1 if state['turn']['color'] == "Black" else 0
+class AssessedGuidedMonteCarloPlayTree(GuidedMonteCarloPlayTree):
+    """Assessed MCTS with neural augmentations"""
 
-    return board
+    def __init__(self, env, node_class, board_size, actor_critic_network, device):
+        super(AssessedGuidedMonteCarloPlayTree, self).__init__(env, node_class, board_size, actor_critic_network, device)
+
+    def pick_action(self, node):
+
+        if node.current_player() == 1:
+            return super(AssessedGuidedMonteCarloPlayTree, self).pick_action(node)
+        else:
+            possible_actions = node.possible_actions_list()
+
+            if len(possible_actions) == 0:
+                return None, 0.0
+            
+            index = np.random.choice(len(possible_actions))
+            return tuple(possible_actions[index]), np.ones(len(possible_actions)) / len(possible_actions)
 
 
 class Node:
