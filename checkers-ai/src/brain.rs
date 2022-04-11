@@ -28,13 +28,13 @@ impl ActorCritic {
             ..Default::default()
         };
 
-        let conv1 = nn::conv2d(vs, 1, 64, 3, conv2d_cfg);
-        let conv2 = nn::conv2d(vs, 64, 128, 3, conv2d_cfg);
-        let conv3 = nn::conv2d(vs, 128, 128, 3, conv2d_cfg);
-        let conv4 = nn::conv2d(vs, 128, 256, 3, conv2d_cfg);
+        let conv1 = nn::conv2d(vs, 1, 128, 3, conv2d_cfg);
+        let conv2 = nn::conv2d(vs, 128, 256, 3, conv2d_cfg);
+        let conv3 = nn::conv2d(vs, 256, 256, 3, conv2d_cfg);
+        let conv4 = nn::conv2d(vs, 256, 512, 3, conv2d_cfg);
 
-        let layer1 = nn::linear(vs, 256, 4096, Default::default());
-        let layer2 = nn::linear(vs, 256, 1, Default::default());
+        let layer1 = nn::linear(vs, 512, 4096, Default::default());
+        let layer2 = nn::linear(vs, 512, 1, Default::default());
 
         ActorCritic {
             conv1,
@@ -57,7 +57,7 @@ impl nn::Module for ActorCritic {
         let x = x.apply(&self.conv4).relu().max_pool2d_default(2);
 
         let x = x
-            .view([-1, 256])
+            .view([-1, 512])
             .apply(&self.layer1)
             .softmax(0, tch::Kind::Float)
             .view([8, 8, 8, 8]);

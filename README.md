@@ -42,6 +42,13 @@ CheckersOnBevy
 
 The reason is that we want our game logic be decoupled from a game front-end (Bevy application) and be accessible to other languages with gRPC API. Application can be run with Client-Server model or as a standalone one. ```checkers-server``` is also used in 2nd part of this project where we train a Neural Network to play the game.
 
+### Usage
+
+1. Install pytorch and rust
+2. git clone repository
+3. Build project with cargo build 
+4. cargo run --bin checkers-app
+
 ## 1.1 🗀 checkers-core
 
 ```checkers-core``` contains game logic and bevy frontend. It does not contain any network functionality and can be compiled as Desktop (Windows, Linux), Mobile (Android, iOS) or Web Assembly target.
@@ -377,13 +384,15 @@ According to [6] over 1700 years are required to reproduce Google AlphaZero weig
 
 As of 02/10/2022 training results are unsatisfactory. Further training for at least 5000eps is required to evaluate method feasibility. One of concerns that it may require sufficient amount of training (> 1 week of real machine time).
 
+**UPD April 2022**: 1 month of month of training on GPU didn't produce good results.
+
 #### Go
 
 Previous work [2] with some fixes with  network architecture changes [5]: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Go.ipynb
 
-#### Checkers Ugolki
+#### Checkers
 
-Python Jupyter Notebook with training details: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Ugolki.ipynb
+Python Jupyter Notebook with training details: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Checkers.ipynb
 
 ### Rust, Bevy and Torch 
 
@@ -393,6 +402,10 @@ Subjective state of these instruments (February 2022):
 * **PyTorch:** Has been stable enough that code from 2019 has been used with minor modifications. Deploying to mobile is still a struggle. wasm isn't a option for model deployment too, but there is option of ONNX.js for javascript model deployment.
 
 ***
+
+## TODO
+
+1. Agent playing Checkers on human level
 
 ## Acknowledgements
 
