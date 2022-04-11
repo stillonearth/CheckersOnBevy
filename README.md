@@ -382,9 +382,11 @@ According to [6] over 1700 years are required to reproduce Google AlphaZero weig
 
 ![training_plot](https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/plots/checkers-training-200-eps.png?raw=true)
 
-As of 02/10/2022 training results are unsatisfactory. Further training for at least 5000eps is required to evaluate method feasibility. One of concerns that it may require sufficient amount of training (> 1 week of real machine time).
+#### Timeline
 
-**UPD April 2022**: 1 month of month of training on GPU didn't produce good results.
+**2022-02-10** training results are unsatisfactory. Further training for at least 5000eps is required to evaluate method feasibility. One of concerns that it may require sufficient amount of training (> 1 week of real machine time).
+
+**2022-04-11**: 1 month of month of training on GPU didn't produce good results.
 
 #### Go
 
