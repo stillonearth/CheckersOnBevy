@@ -5,9 +5,7 @@ use checkers_ai::brain;
 use checkers_core::game;
 
 mod bevy_frontend;
-use bevy_tasks::{TaskPool, TaskPoolBuilder};
-
-use std::boxed::Box;
+use bevy_tasks::TaskPoolBuilder;
 
 fn main() {
     let brain = Arc::new(Mutex::<brain::Brain>::new(brain::Brain::new()));

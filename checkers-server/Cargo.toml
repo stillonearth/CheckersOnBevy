@@ -3,14 +3,13 @@ edition = "2021"
 name = "checkers-server"
 version = "0.2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-checkers-core = { path = "../checkers-core", version = "^0.2.0"}
-prost = "0.9"
+checkers-core = { path = "../checkers-core", version = "^0.2.0" }
+prost = "0.11.0"
 serde = "1.0.136"
 serde_json = "1.0"
-tokio = {version = "1.0", features = ["macros", "rt-multi-thread"]}
-tonic = "0.6"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tonic = "0.8.2"
 
 [build-dependencies]
-tonic-build = "0.6"
+tonic-build = "0.8.2"

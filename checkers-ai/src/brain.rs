@@ -18,7 +18,7 @@ struct ActorCritic {
     conv4: nn::Conv2D,
 
     layer1: nn::Linear,
-    layer2: nn::Linear,
+    // layer2: nn::Linear,
 }
 
 impl ActorCritic {
@@ -34,7 +34,7 @@ impl ActorCritic {
         let conv4 = nn::conv2d(vs, 256, 512, 3, conv2d_cfg);
 
         let layer1 = nn::linear(vs, 512, 4096, Default::default());
-        let layer2 = nn::linear(vs, 512, 1, Default::default());
+        // let layer2 = nn::linear(vs, 512, 1, Default::default());
 
         ActorCritic {
             conv1,
@@ -42,7 +42,7 @@ impl ActorCritic {
             conv3,
             conv4,
             layer1,
-            layer2,
+            // layer2,
         }
     }
 }
@@ -70,7 +70,7 @@ impl Brain {
     pub fn new() -> Brain {
         let mut vs = nn::VarStore::new(Device::Cpu);
         let model = ActorCritic::new(&vs.root());
-        vs.load("checkers.pt");
+        vs.load("checkers.pt").unwrap();
 
         Brain { model }
     }

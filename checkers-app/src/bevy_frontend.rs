@@ -77,6 +77,7 @@ impl FromWorld for Materials {
 pub enum AppState {
     PlayerTurn,
     ComputerTurn,
+    #[allow(dead_code)]
     Idle,
 }
 
@@ -227,7 +228,7 @@ fn update_entity_pieces(
     // queries
     mut query: Query<(Entity, &mut Visibility, &mut Transform, &game::Piece)>,
 ) {
-    for (e, mut v, mut t, p) in query.iter_mut() {
+    for (e, mut _v, mut t, p) in query.iter_mut() {
         if !game.is_changed() {
             return;
         }
@@ -235,10 +236,9 @@ fn update_entity_pieces(
         let new_piece = game.state.pieces.iter().find(|_p| _p.id == p.id);
 
         if new_piece.is_none() {
-            // v.is_visible = false;
-            let mut entity = commands.entity(e);
-            entity.despawn();
-            // if entity
+            // _v.is_visible = false;
+            let entity = commands.entity(e);
+            entity.despawn_recursive();
             continue;
         }
 
@@ -308,16 +308,17 @@ fn event_piece_moved(
     for event in picking_events.iter() {
         let (entity, piece, transform) = query.get_mut(event.0).unwrap();
 
-        commands.entity(entity).insert(Animator::new(
+        let tween = Tween::new(
             EaseFunction::QuadraticInOut,
-            TweeningType::Once {
-                duration: Duration::from_millis(200),
-            },
+            TweeningType::Once,
+            Duration::from_millis(200),
             TransformPositionWithYJumpLens {
                 start: transform.translation,
                 end: piece_translation(*piece),
             },
-        ));
+        );
+
+        commands.entity(entity).insert(Animator::new(tween));
     }
 }
 
@@ -340,26 +341,26 @@ fn highlight_piece(
 // UI -- Buttons & Text
 
 fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let text = Text::with_section(
+    let text = Text::from_section(
         "",
         TextStyle {
             font_size: 35.0,
             font: asset_server.load("Roboto-Regular.ttf"),
             color: Color::rgb(1.0, 0.2, 0.2),
-        },
+        }
+    ).with_alignment(
         TextAlignment {
             horizontal: HorizontalAlign::Left,
             ..Default::default()
-        },
-    );
+        });
+   
 
-    commands.spawn_bundle(UiCameraBundle::default());
     // root node
     commands
         .spawn_bundle(NodeBundle {
             style: Style {
                 position_type: PositionType::Absolute,
-                position: Rect {
+                position: UiRect {
                     left: Val::Px(10.),
                     top: Val::Px(10.),
                     ..Default::default()
@@ -397,14 +398,13 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
         })
         .with_children(|parent| {
             parent.spawn_bundle(TextBundle {
-                text: Text::with_section(
+                text: Text::from_section(
                     "Pass Turn",
                     TextStyle {
                         font: asset_server.load("Roboto-Regular.ttf"),
                         font_size: 30.0,
                         color: Color::rgb(0.9, 0.9, 0.9),
                     },
-                    Default::default(),
                 ),
                 ..Default::default()
             });
@@ -639,20 +639,20 @@ impl Plugin for BoardPlugin {
 pub struct PiecesPlugin;
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(create_pieces.system())
+        app.add_startup_system(create_pieces)
             .add_plugin(TweeningPlugin)
-            .add_system(highlight_piece.system())
-            .add_system(event_piece_moved.system());
+            .add_system(highlight_piece)
+            .add_system(event_piece_moved);
     }
 }
 
 pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(init_text.system())
-            .add_startup_system(init_buttons.system())
-            .add_system(next_move_text_update.system())
-            .add_system(button_system.system());
+        app.add_startup_system(init_text)
+            .add_startup_system(init_buttons)
+            .add_system(next_move_text_update)
+            .add_system(button_system);
     }
 }
 
@@ -681,7 +681,7 @@ fn setup(mut commands: Commands) {
 
     // Camera
     commands
-        .spawn_bundle(PerspectiveCameraBundle {
+        .spawn_bundle(Camera3dBundle {
             transform: camera_transform,
             ..Default::default()
         })
@@ -703,7 +703,7 @@ pub fn create_bevy_app(game: game::Game) -> App {
         // Resources
         .insert_resource(game)
         // Entry Point
-        .add_startup_system(setup.system())
+        .add_startup_system(setup)
         // External Plugins
         .add_plugins(DefaultPlugins)
         .add_plugin(PickingPlugin)

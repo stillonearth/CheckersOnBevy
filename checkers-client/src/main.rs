@@ -25,6 +25,7 @@ fn fetch_game_state(
     state
 }
 
+#[allow(dead_code)]
 fn push_game_state(
     state: game::GameState,
     client: &mut EnvironmentClient<tonic::transport::channel::Channel>,
