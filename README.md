@@ -6,15 +6,11 @@ February 2022
 
 ## Project Description
 
-<<<<<<< HEAD
-This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch.
-=======
 https://user-images.githubusercontent.com/97428129/194442842-42de82d6-b9a0-456a-909c-c6ee7b3037bb.mp4
 
-This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch. 
->>>>>>> 8bc3c4e9ec77573b196b5e01562a160a3d51cf07
+This project isaground-up introduction to modern game programmingusingRust on [Bevy](https://bevyengine.org/) Engine and AI programmingusingPyTorch.
 
-In the first part of this project we will implement a classic English checkers game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust environment targeting Desktop (Windows, Linux).
+In the firsthalfof this project,we will implement a classic English checkers gameusingtheBevy game engine ontheRust programming language.Wewillthenimplement an OpenAI Gymcompatible environmentin PyTorch and Pythonto trainAIagentsto play this game.Finally,we will deploytheAI agentinaRust environment targetingdesktops(Windows, Linux).
 
 ## Changelog
 
