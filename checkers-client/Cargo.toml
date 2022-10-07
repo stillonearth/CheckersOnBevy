@@ -7,8 +7,8 @@ version = "0.3.0"
 anyhow = "1.0"
 bevy = { version = "0.8.1" }
 bevy_tasks = "0.8.1"
-checkers-app = { path = "../checkers-app", version = "^0.2.0" }
-checkers-core = { path = "../checkers-core", version = "^0.2.0" }
+checkers-app = { path = "../checkers-app" }
+checkers-core = { path = "../checkers-core" }
 futures = "0.3"
 prost = "0.11.0"
 serde = "1.0.136"

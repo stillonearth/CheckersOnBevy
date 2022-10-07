@@ -6,4 +6,4 @@ version = "0.3.0"
 [dependencies]
 tch = "0.8.0"
 rand = "0.8.4"
-checkers-core = { path = "../checkers-core", version = "^0.2.0" }
+checkers-core = { path = "../checkers-core" }
