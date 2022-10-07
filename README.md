@@ -6,19 +6,15 @@ February 2022
 
 ## Project Description
 
-<<<<<<< HEAD
-This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch.
-=======
 https://user-images.githubusercontent.com/97428129/194442842-42de82d6-b9a0-456a-909c-c6ee7b3037bb.mp4
 
-This project is ground-up introduction to modern game programming with Rust on [Bevy](https://bevyengine.org/) Engine and AI programming with PyTorch. 
->>>>>>> 8bc3c4e9ec77573b196b5e01562a160a3d51cf07
+This project is a ground-up introduction to modern game programming using Rust on [Bevy](https://bevyengine.org/) Engine and AI programming using PyTorch.
 
-In the first part of this project we will implement a classic English checkers game with Bevy game engine on Rust programming language. Then we will implement an OpenAI Gym-compatible environment to train an AI agent to play this game with PyTorch and Python. In last part of this project we will deploy AI agent to Rust environment targeting Desktop (Windows, Linux).
+In the first half of this project, we will implement a classic English Checkers game using the Bevy game engine on the Rust programming language. We will then implement an OpenAI Gym compatible environment in PyTorch and Python to train AI agents to play this game. Finally, we will deploy the AI agent in a Rust environment targeting desktop platforms (Windows, Linux).
 
 ## Changelog
 
-- **0.30** updated to bevy 0.8.1
+- **0.3.0** updated to bevy 0.8.1
 
 ### Project Goals
 
@@ -424,7 +420,6 @@ Subjective state of these instruments (February 2022):
 
 ## References
 
-<<<<<<< HEAD
 - [1] **Chess game in Rust using Bevy**, _guimcaballero_, Nov 16th 2020, <br /> https://caballerocoll.com/blog/bevy-chess-tutorial/
 - [2] **Reimplementing Alpha-Zero for board game of Go**, _Sergei Surovtsev_, December 2019, <br />https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb
 - [3] **CS234 Notes - Lecture 14 Model Based RL, Monte-Carlo Tree Search**, _Anchit Gupta, Emma Brunskill_, June 2018, <br />https://web.stanford.edu/class/cs234/CS234Win2019/slides/lnotes14.pdf
@@ -438,4 +433,3 @@ Subjective state of these instruments (February 2022):
 * [4] **A general reinforcement learning algorithm that masters chess, shogi and Go through self-play**, *Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and others*, Science 362 (6419): 1140--1144 (2018), <br />https://kstatic.googleusercontent.com/files/2f51b2a749a284c2e2dfa13911da965f4855092a179469aedd15fbe4efe8f8cbf9c515ef83ac03a6515fa990e6f85fd827dcd477845e806f23a17845072dc7bd
 * [5] **Udacity Deep Reinforcement Learning Weekly Webinar**, 2019, <br/>https://www.youtube.com/watch?v=X72vKonfzCk
 * [6] **Zero performance**, Gian-Carlo Pascutto, October 2020, <br /> https://web.archive.org/web/20190205013627/http://computer-go.org/pipermail/computer-go/2017-October/010307.html
->>>>>>> 8bc3c4e9ec77573b196b5e01562a160a3d51cf07
