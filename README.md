@@ -1,4 +1,4 @@
-# 🏁 Checkers Game on 🦀 Rust and 🕊 Bevy, 🏋🏿 Gym Environment and 🕵️ AI Agent based on 🌴 Monte Carlo Tree Search (MCTS) with 🧠 Neural Heuristics (AlphaZero) on 🐍 Python and 🔥PyTorch
+# 🏁 Checkers with 🦀 Rust and 🕊 Bevy and 🏋🏿 a Gym Environment with 🕵️ AI Agent based on 🌴 Monte Carlo Tree Search (MCTS) with 🧠 Neural Heuristics (AlphaZero) with 🔥PyTorch
 
 **Sergei Surovtsev** <<ssurovsev@gmail.com>>
 <br />
