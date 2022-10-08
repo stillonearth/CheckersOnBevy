@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use rand;
 use rand::{distributions::WeightedIndex, prelude::Distribution};
 use tract_ndarray::Array3;
@@ -6,26 +8,25 @@ use tract_onnx::prelude::*;
 use checkers_core::game;
 use checkers_core::gym_env;
 
-pub struct Brain {}
+pub struct Brain {
+    model_path: String,
+}
 
 impl Brain {
-    pub fn new() -> Brain {
-        Brain {}
+    pub fn new(model_path: String) -> Brain {
+        Brain {
+            model_path: model_path,
+        }
     }
 
     pub fn choose_action(&self, state: game::GameState) -> Option<gym_env::Action> {
         let model = tract_onnx::onnx()
-            // load the model
-            // provide the full path to the model
-            .model_for_path("model.onnx")
+            .model_for_path(self.model_path.as_str())
             .unwrap()
-            // specify input type and shape
             .with_input_fact(0, f32::fact(&[1, 8, 8]).into())
             .unwrap()
-            // optimize the model
             .into_optimized()
             .unwrap()
-            // make the model runnable and fix its inputs and outputs
             .into_runnable()
             .unwrap();
 

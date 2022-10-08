@@ -8,7 +8,10 @@ mod bevy_frontend;
 use bevy_tasks::TaskPoolBuilder;
 
 fn main() {
-    let brain = Arc::new(Mutex::<brain::Brain>::new(brain::Brain::new()));
+    let root_dir = env!("CARGO_MANIFEST_DIR");
+    let model_path = format!("{}{}", root_dir, "/assets/model.onnx");
+
+    let brain = Arc::new(Mutex::<brain::Brain>::new(brain::Brain::new(model_path)));
     let pool = TaskPoolBuilder::new()
         .thread_name("Busy Behavior ThreadPool".to_string())
         .num_threads(1)
