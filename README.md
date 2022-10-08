@@ -12,12 +12,12 @@ This project is a ground-up introduction to modern game programming using Rust o
 
 In the first half of this project, we will implement a classic English Checkers game using the Bevy game engine on the Rust programming language. We will then implement an Gym compatible environment in PyTorch and Python to train AI agents to play this game. Finally, we will deploy the AI agent in a Rust environment targeting desktop platforms (Windows, Linux).
 
-## Changelog
+## 📋 Changelog
 
 - **0.3.0** `bevy` updated to 0.8.1
 - **0.4.0** `tch-rs` switched to `tract-onnx `
 
-### Project Goals
+### 🎯 Project Goals
 
 - 🦀 Introduction to Rust programming language
 - 🎮 Introduction to game programming with Bevy engine
@@ -25,14 +25,14 @@ In the first half of this project, we will implement a classic English Checkers 
 - 🕵️ Training an AI agent to play Checkers Ugolki Game with PyTorch
 - 🌆 Deploying trained model to Rust environment
 
-### Technical Formulation of Problem
+### 👩‍💻 Technical Formulation of Problem
 
 - 🦀Set up Rust development environment
 - 🐍 Set up Python development environment with PyTorch 1.10+ (CUDA support is desirable)
 
 ---
 
-## 1. Making 🏁 Checkers Game with 🕊 Bevy and 🦀 Rust
+## 1. 🏗️ Building 🏁 Checkers Game with 🕊 Bevy and 🦀 Rust
 
 On high-level project is structured with [workspace](https://doc.rust-lang.org/cargo/reference/manifest.html#the-workspace-field) feature of Cargo.toml.
 
@@ -50,7 +50,7 @@ CheckersOnBevy
 
 The reason is that we want our game logic be decoupled from a game front-end (Bevy application) and be accessible to other languages with gRPC API. Application can be run with Client-Server model or as a standalone one. `checkers-server` is also used in 2nd part of this project where we train a Neural Network to play the game.
 
-### Usage
+### 📝 Usage
 
 1. Install pytorch and rust
 2. git clone repository
@@ -115,7 +115,7 @@ In order to use these modules in other projects they have to be exported via `li
 
 ## 1.2 🗀 checkers-app
 
-### 1.2.1 Front-End
+### 1.2.1 🎮 Front-End
 
 `bevy_frontend.rs` implements Bevy application which is influenced by [1].
 
@@ -194,7 +194,7 @@ _UIPlugin_ describes buttons and game state text label.
        `--button_system
 ```
 
-## 2. Making 🏋🏿 Gym Environment with 🐍 Python and 🦀 Rust
+## 2. 🏗️ Building 🏋🏿 Gym Environment with 🐍 Python and 🦀 Rust
 
 ## 2.1 🗀 checkers-server
 
