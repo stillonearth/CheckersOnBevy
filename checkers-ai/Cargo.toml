@@ -4,6 +4,6 @@ name = "checkers-ai"
 version = "0.3.0"
 
 [dependencies]
-tch = "0.8.0"
 rand = "0.8.4"
 checkers-core = { path = "../checkers-core" }
+tract-onnx = "0.18.1"

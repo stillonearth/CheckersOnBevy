@@ -1,84 +1,41 @@
 use rand;
 use rand::{distributions::WeightedIndex, prelude::Distribution};
-use tch;
-use tch::{nn, Device};
+use tract_ndarray::Array3;
+use tract_onnx::prelude::*;
 
 use checkers_core::game;
 use checkers_core::gym_env;
 
-pub struct Brain {
-    model: ActorCritic,
-}
-
-#[derive(Debug)]
-struct ActorCritic {
-    conv1: nn::Conv2D,
-    conv2: nn::Conv2D,
-    conv3: nn::Conv2D,
-    conv4: nn::Conv2D,
-
-    layer1: nn::Linear,
-}
-
-impl ActorCritic {
-    fn new(vs: &nn::Path) -> ActorCritic {
-        let conv2d_cfg = nn::ConvConfigND::<i64> {
-            padding: 1,
-            ..Default::default()
-        };
-
-        let conv1 = nn::conv2d(vs, 1, 128, 3, conv2d_cfg);
-        let conv2 = nn::conv2d(vs, 128, 256, 3, conv2d_cfg);
-        let conv3 = nn::conv2d(vs, 256, 256, 3, conv2d_cfg);
-        let conv4 = nn::conv2d(vs, 256, 512, 3, conv2d_cfg);
-
-        let layer1 = nn::linear(vs, 512, 4096, Default::default());
-
-        ActorCritic {
-            conv1,
-            conv2,
-            conv3,
-            conv4,
-            layer1,
-        }
-    }
-}
-
-impl nn::Module for ActorCritic {
-    fn forward(&self, xs: &tch::Tensor) -> tch::Tensor {
-        let x = xs.view([-1, 1, 8, 8]);
-        let x = x.apply(&self.conv1).relu();
-
-        let x = x.apply(&self.conv2).relu().max_pool2d_default(2);
-        let x = x.apply(&self.conv3).relu().max_pool2d_default(2);
-        let x = x.apply(&self.conv4).relu().max_pool2d_default(2);
-
-        let x = x
-            .view([-1, 512])
-            .apply(&self.layer1)
-            .softmax(0, tch::Kind::Float)
-            .view([8, 8, 8, 8]);
-
-        return x;
-    }
-}
+pub struct Brain {}
 
 impl Brain {
     pub fn new() -> Brain {
-        let mut vs = nn::VarStore::new(Device::Cpu);
-        let model = ActorCritic::new(&vs.root());
-        vs.load("checkers.pt").unwrap();
-
-        Brain { model }
+        Brain {}
     }
 
     pub fn choose_action(&self, state: game::GameState) -> Option<gym_env::Action> {
+        let model = tract_onnx::onnx()
+            // load the model
+            // provide the full path to the model
+            .model_for_path("model.onnx")
+            .unwrap()
+            // specify input type and shape
+            .with_input_fact(0, f32::fact(&[1, 8, 8]).into())
+            .unwrap()
+            // optimize the model
+            .into_optimized()
+            .unwrap()
+            // make the model runnable and fix its inputs and outputs
+            .into_runnable()
+            .unwrap();
+
+        let zeros: Vec<f32> = (0..64).map(|_| 0.0).collect();
+        let mut input_array = Array3::from_shape_vec((1, 8, 8), zeros).unwrap();
+
         let multiplier = match state.turn.color {
             game::Color::Black => 1,
             game::Color::White => -1,
         };
-
-        let input = tch::Tensor::zeros(&[8, 8], tch::kind::FLOAT_CPU);
 
         for p in state.pieces.iter() {
             let value = (multiplier
@@ -87,13 +44,14 @@ impl Brain {
                     game::Color::White => -1,
                 }) as f32;
 
-            let index = tch::Tensor::of_slice(&[p.x, p.y]).to_kind(tch::Kind::Int64);
-            let mut _tensor = input.index_select(1, &index);
-            _tensor = tch::Tensor::of_slice(&[value]);
+            // play from perspective of black; flip board if white
+            let index = [0, 7 - p.x as usize, p.y as usize];
+            input_array[index] = value;
         }
 
-        let input = input.flip(&[1]).unsqueeze(1);
-        let result = input.apply(&self.model).squeeze().flip(&[1]);
+        let input: Tensor = input_array.into();
+        let result = model.run(tvec!(input)).unwrap();
+        let output = result[0].to_array_view::<f32>().unwrap();
 
         let allowed_moves = state.moveset;
         let mut actions: Vec<(u8, u8, u8, u8)> = Vec::new();
@@ -105,8 +63,8 @@ impl Brain {
                     continue;
                 }
 
-                let ai_prob =
-                    result.double_value(&[p.x as i64, p.y as i64, m.0 as i64, m.1 as i64]);
+                let index = [0, p.x as usize, p.y as usize, m.0 as usize, m.1 as usize];
+                let ai_prob = output[index];
 
                 if ai_prob > 0.0 {
                     weights.push((ai_prob * 1000.0) as i32);
