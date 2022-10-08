@@ -379,34 +379,9 @@ class ActorCritic(nn.Module):
 
 ## Results
 
-### Training Results
-
-Google-produced Alpha-Zero trained on Google TPUs which faster than consumer-available hardware. To achieve human and above-human performance significant compute time is needed on consumer hardware. In this project network is trained to validate performance on Go Environment [2] for 1000 iterations and then same network is trained for game of Checkers.
-
-According to [6] over 1700 years are required to reproduce Google AlphaZero weights on consumer hardware, which makes reproducibility a problem.
-
-![training_plot](https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/plots/checkers-training-200-eps.png?raw=true)
-
-#### Timeline
-
-**2022-02-10** training results are unsatisfactory. Further training for at least 5000eps is required to evaluate method feasibility. One of concerns that it may require sufficient amount of training (> 1 week of real machine time).
-
-**2022-04-11**: 1 month of month of training on GPU didn't produce good results.
-
-#### Go
-
-Previous work [2] with some fixes with network architecture changes [5]: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Go.ipynb
-
 #### Checkers
 
 Python Jupyter Notebook with training details: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Checkers.ipynb
-
-### Rust, Bevy and Torch
-
-Subjective state of these instruments (February 2022):
-
-- **Rust & Bevy:** Bevy is suitable for implementing novel training environments because of stability, memory safety and broad ecosystem of plugins. Bevy doesn't cost you anything, distributed with double MIT, Apache 2.0 and can be freely used in research and production. It can also target Web, Desktop and Mobile making it prime choice for rapid prototyping.
-- **PyTorch:** Has been stable enough that code from 2019 has been used with minor modifications. Deploying to mobile is still a struggle. wasm isn't a option for model deployment too, but there is option of ONNX.js for javascript model deployment.
 
 ---
 
@@ -426,10 +401,3 @@ Subjective state of these instruments (February 2022):
 - [4] **A general reinforcement learning algorithm that masters chess, shogi and Go through self-play**, _Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and others_, Science 362 (6419): 1140--1144 (2018), <br />https://kstatic.googleusercontent.com/files/2f51b2a749a284c2e2dfa13911da965f4855092a179469aedd15fbe4efe8f8cbf9c515ef83ac03a6515fa990e6f85fd827dcd477845e806f23a17845072dc7bd
 - [5] **Udacity Deep Reinforcement Learning Weekly Webinar**, 2019, <br/>https://www.youtube.com/watch?v=X72vKonfzCk
 - [6] **Zero performance**, Gian-Carlo Pascutto, October 2020, <br /> https://web.archive.org/web/20190205013627/http://computer-go.org/pipermail/computer-go/2017-October/010307.html
-=======
-* [1] **Chess game in Rust using Bevy**, *guimcaballero*, Nov 16th 2020, <br /> https://caballerocoll.com/blog/bevy-chess-tutorial/
-* [2] **Reimplementing Alpha-Zero for board game of Go**, *Sergei Surovtsev*, December 2019, <br />https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb
-* [3] **CS234 Notes - Lecture 14 Model Based RL, Monte-Carlo Tree Search**, *Anchit Gupta, Emma Brunskill*, June 2018, <br />https://web.stanford.edu/class/cs234/CS234Win2019/slides/lnotes14.pdf
-* [4] **A general reinforcement learning algorithm that masters chess, shogi and Go through self-play**, *Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and others*, Science 362 (6419): 1140--1144 (2018), <br />https://kstatic.googleusercontent.com/files/2f51b2a749a284c2e2dfa13911da965f4855092a179469aedd15fbe4efe8f8cbf9c515ef83ac03a6515fa990e6f85fd827dcd477845e806f23a17845072dc7bd
-* [5] **Udacity Deep Reinforcement Learning Weekly Webinar**, 2019, <br/>https://www.youtube.com/watch?v=X72vKonfzCk
-* [6] **Zero performance**, Gian-Carlo Pascutto, October 2020, <br /> https://web.archive.org/web/20190205013627/http://computer-go.org/pipermail/computer-go/2017-October/010307.html
