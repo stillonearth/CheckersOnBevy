@@ -1,4 +1,4 @@
-# Checkers Game on Rust and Bevy, OpenAI Gym Environment and AI Agent based on Monte Carlo Tree Search (MCTS) with neural heuristics (AlphaZero) on Python and PyTorch
+# 🏁 Checkers Game on 🦀 Rust and 🕊 Bevy, 🏋🏿 Gym Environment and 🕵️ AI Agent based on 🌴 Monte Carlo Tree Search (MCTS) with 🧠 Neural Heuristics (AlphaZero) on 🐍 Python and 🔥PyTorch
 
 **Sergei Surovtsev** <<ssurovsev@gmail.com>>
 <br />
@@ -10,28 +10,29 @@ https://user-images.githubusercontent.com/97428129/194442842-42de82d6-b9a0-456a-
 
 This project is a ground-up introduction to modern game programming using Rust on [Bevy](https://bevyengine.org/) Engine and AI programming using PyTorch.
 
-In the first half of this project, we will implement a classic English Checkers game using the Bevy game engine on the Rust programming language. We will then implement an OpenAI Gym compatible environment in PyTorch and Python to train AI agents to play this game. Finally, we will deploy the AI agent in a Rust environment targeting desktop platforms (Windows, Linux).
+In the first half of this project, we will implement a classic English Checkers game using the Bevy game engine on the Rust programming language. We will then implement an Gym compatible environment in PyTorch and Python to train AI agents to play this game. Finally, we will deploy the AI agent in a Rust environment targeting desktop platforms (Windows, Linux).
 
 ## Changelog
 
-- **0.3.0** updated to bevy 0.8.1
+- **0.3.0** `bevy` updated to 0.8.1
+- **0.4.0** `tch-rs` switched to `tract-onnx `
 
 ### Project Goals
 
-- Introduction to Rust programming language
-- Introduction to game programming with Bevy engine
-- Implementing an OpenAI Gym environment from ground-up
-- Training an AI agent to play Checkers Ugolki Game with PyTorch
-- Deploying trained model to Rust environment
+- 🦀 Introduction to Rust programming language
+- 🎮 Introduction to game programming with Bevy engine
+- 🏋🏿 Implementing an Gym environment from ground-up
+- 🕵️ Training an AI agent to play Checkers Ugolki Game with PyTorch
+- 🌆 Deploying trained model to Rust environment
 
 ### Technical Formulation of Problem
 
-- Set up Rust development environment
-- Set up Python development environment with PyTorch 1.10+ (CUDA support is desirable)
+- 🦀Set up Rust development environment
+- 🐍 Set up Python development environment with PyTorch 1.10+ (CUDA support is desirable)
 
 ---
 
-## 1. Making Checkers Game with Bevy and Rust
+## 1. Making 🏁 Checkers Game with 🕊 Bevy and 🦀 Rust
 
 On high-level project is structured with [workspace](https://doc.rust-lang.org/cargo/reference/manifest.html#the-workspace-field) feature of Cargo.toml.
 
@@ -60,7 +61,7 @@ The reason is that we want our game logic be decoupled from a game front-end (Be
 
 `checkers-core` contains game logic and bevy frontend. It does not contain any network functionality and can be compiled as Desktop (Windows, Linux), Mobile (Android, iOS) or Web Assembly target.
 
-### 1.1.1 Game Rules
+### 1.1.1 🎲 Game Rules
 
 `game.rs` describes game rules. It contains following entities:
 
@@ -76,9 +77,9 @@ The reason is that we want our game logic be decoupled from a game front-end (Be
 
 This is pure Rust module, but `Piece` and `Square` are decorated with bevy's `Component` decorator which is needed for Entity-Component-System (ECS) pattern used in Bevy.
 
-### 1.1.2 OpenAI Gym Interface
+### 1.1.2 🏋🏿 Gym Interface
 
-[OpenAI Gym](https://gym.openai.com/) describes Environment interface in following way:
+[Gym](https://gym.com/) describes Environment interface in following way:
 
 ```python
 env = Environment()
@@ -106,7 +107,7 @@ env.close()
 
 In part 2 of this project `CheckersEnv` is exposed as gRPC server and python client is implemented to communicate with it.
 
-### 1.1.4 Exporting modules as a library
+### 1.1.4 📚 Exporting modules as a library
 
 In order to use these modules in other projects they have to be exported via `lib.rs`:
 
@@ -193,7 +194,7 @@ _UIPlugin_ describes buttons and game state text label.
        `--button_system
 ```
 
-## 2. Making OpenAI Gym Environment with Python and Rust
+## 2. Making 🏋🏿 Gym Environment with 🐍 Python and 🦀 Rust
 
 ## 2.1 🗀 checkers-server
 
@@ -204,19 +205,19 @@ We want our Python Gym environment to run simulation, correct it state and take 
 
 Because of that `checkers-server` implements a gRPC server wrapping `CheckersEnv`. It is [Tonic](https://github.com/hyperium/tonic) gRPC server which assumes that environment can be accessed simultaneously from multiple threads so `CheckersEnv` is wrapped in mutex in atomic reference counter `Arc<Mutex<CheckersEnv>>`.
 
-`proto/environment.proto` describes service contract with [Protocol Buffers](https://developers.google.com/protocol-buffers/). We don't fully describe service fields because all responses are serialized to json entities from _§1.1.1 Game Rules_ and _§1.1.3 OpenAI Gym Interface_. Note that production services should describe all fields in Protocol Buffers contracts.
+`proto/environment.proto` describes service contract with [Protocol Buffers](https://developers.google.com/protocol-buffers/). We don't fully describe service fields because all responses are serialized to json entities from _§1.1.1 Game Rules_ and _§1.1.3 Gym Interface_. Note that production services should describe all fields in Protocol Buffers contracts.
 
 ## 2.2 🗀 checkers-client
 
-A client that communicates with `checkers-server`. You can run multiple instances — a multiplayer game. We also use it to visualize shared game state in OpenAI Gym Environment
+A client that communicates with `checkers-server`. You can run multiple instances — a multiplayer game. We also use it to visualize shared game state in Gym Environment
 
 ## 2.3 🗀 checkers-ai
 
-### 2.3.1 Python
+### 2.3.1 🐍 Python
 
-`env.py` describes `Env` — a gRPC client that communicates with Rust gRPC server. This `Env` also implements OpenAI Gym Environment interface.
+`env.py` describes `Env` — a gRPC client that communicates with Rust gRPC server. This `Env` also implements Gym Environment interface.
 
-### 2.3.2 Rust
+### 2.3.2 🦀 Rust
 
 `env.rs` uses `tch-rs` to load python-trained model and make call to it. Some caveats:
 
@@ -227,7 +228,7 @@ A client that communicates with `checkers-server`. You can run multiple instance
 
 ---
 
-## 3. Training AlphaZero to play Checkers Ugolki with PyTorch and Python
+## 3. 🏅 Training AlphaZero to play 🏁 Checkers with PyTorch and 🐍 Python
 
 Checkers is fully observable turn-based zero-sum game, which means:
 
@@ -237,9 +238,9 @@ Checkers is fully observable turn-based zero-sum game, which means:
 
 Monte-Carlo Search Tree is known method for solving such games. For games with higher dimensionality there is AlphaZero flavor which uses neural network(s) to improve computation efficiency and performance of Search Trees.
 
-### 3.1 Mathematical Models
+### 3.1 🧮 Mathematical Models
 
-#### 3.1.1 Monte-Carlo Tree Search
+#### 3.1.1 🌴 Monte-Carlo Tree Search
 
 MCTS algorithm operates on game trees and doesn't need to know game rules. Via self-play it can discover strategies which with sufficient amount of compute outperform human players. [3]
 
@@ -247,7 +248,7 @@ We organize sequence of moves into tree structure. I.e. for each game state node
 
 A node N on tree T is characterized by:
 
-|     |                        |
+| var | description            |
 | --- | ---------------------- |
 | S   | state                  |
 | A   | action                 |
@@ -278,7 +279,7 @@ def uct(self, node, c=MCTS_C):
 
 _Rollout policy_: pick unvisited children node randomly.
 
-#### 3.1.2 AlphaZero
+#### 3.1.2 0️⃣ AlphaZero
 
 Alpha-zero improves on vanilla MCST by introducing two-headed neural network to evaluate node's value (predict who's winning) and suggest actions to maximize node's value function. This project uses previous work [2] implementation of AlphaZero `checkers-ai/python/monte_carlo_tree.py`
 
@@ -315,13 +316,13 @@ def rollout_policy(self, node):
     return actions[index], probs[index]
 ```
 
-### 3.1.2.1 Loss Function
+### 3.1.2.1 📉 Loss Function
 
 Loss function to train AlphaZero used in this project is:
 
 ![formula](<https://render.githubusercontent.com/render/math?math=l=-\pi^Tlog(p)%2b(v-z)^2>)
 
-### 3.2 Neural Networks
+### 3.2 🧠 Neural Networks
 
 Neural network used in this project is attributed to [5]. This is two-headed network used to predict value and policy functions.
 
@@ -363,37 +364,32 @@ class ActorCritic(nn.Module):
 
 ---
 
-## 4. Production
+## 4. 🌆 Production
 
-## 4.1 Deploying to Desktop (Windows)
+## 4.1 🪟 Deploying to Desktop (Windows)
 
 `cargo build` to build all binaries.
 
-## 4.2 Training a model
+## 4.2 🏅 Training a model
 
 1. Start a game logic rpc server `cargo run --bin checkers-server`
-2. Train a model in jupyter notebook checkers-ai/python/MTSC-Ugolki.ipynb
-3. Copy model to build-directory/assets
+2. Train a model in jupyter notebook `checkers-ai/python/MTSC-Checkers.ipynb`
 
 ---
 
-## Results
+## 📈 Results
 
-#### Checkers
+#### 🏁 Checkers
 
 Python Jupyter Notebook with training details: https://github.com/stillonearth/CheckersOnBevy/blob/master/checkers-ai/python/MTSC-Checkers.ipynb
 
 ---
 
-## TODO
+## 🍻 Acknowledgements
 
-1. Agent playing Checkers on human level
+- [A1] Gym Go Environment, Eddie Huang, August 2019 — May 2021, https://github.com/aigagror/GymGo
 
-## Acknowledgements
-
-- [A1] OpenAI Gym Go Environment, Eddie Huang, August 2019 — May 2021, https://github.com/aigagror/GymGo
-
-## References
+## 📜 References
 
 - [1] **Chess game in Rust using Bevy**, _guimcaballero_, Nov 16th 2020, <br /> https://caballerocoll.com/blog/bevy-chess-tutorial/
 - [2] **Reimplementing Alpha-Zero for board game of Go**, _Sergei Surovtsev_, December 2019, <br />https://github.com/cwiz/guided_monte_carlo_tree-search/blob/master/Tree-Search.ipynb
