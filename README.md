@@ -1,4 +1,4 @@
-# 🏁 Checkers on 🦀 Rust and 🕊 Bevy;🏋🏿 Gym Environment and 👾 AI Agent based on 🌴 Monte Carlo Tree Search Trees with 🧠 Neural Heuristics (AlphaZero) with 🔥PyTorch
+# 🏁 Checkers on 🦀 Rust and 🕊 Bevy; 🏋🏿 Gym Environment and 👾 AI Agent based on 🌴 Monte Carlo Tree Search Trees with 🧠 Neural Heuristics (AlphaZero) with 🔥PyTorch
 
 **Sergei Surovtsev** <<ssurovsev@gmail.com>>
 <br />
