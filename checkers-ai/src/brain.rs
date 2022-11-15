@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use rand;
 use rand::{distributions::WeightedIndex, prelude::Distribution};
 use tract_ndarray::Array3;
@@ -8,6 +6,7 @@ use tract_onnx::prelude::*;
 use checkers_core::game;
 use checkers_core::gym_env;
 
+#[derive(Debug, Clone)]
 pub struct Brain {
     model_path: String,
 }

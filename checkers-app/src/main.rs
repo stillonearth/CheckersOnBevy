@@ -2,6 +2,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use checkers_ai::brain;
+use checkers_app::bevy_frontend::CheckersBrain;
+use checkers_app::bevy_frontend::CheckersTaskPool;
 use checkers_core::game;
 
 mod bevy_frontend;
@@ -18,8 +20,8 @@ fn main() {
         .build();
 
     let mut app = bevy_frontend::create_bevy_app(game::Game::new());
-    app.insert_resource(brain);
-    app.insert_resource(pool);
+    app.insert_resource(CheckersBrain(brain));
+    app.insert_resource(CheckersTaskPool(pool));
     app.add_state(bevy_frontend::AppState::PlayerTurn);
     app.add_system(bevy_frontend::computer_turn);
     app.add_plugin(bevy_frontend::UIPlugin);

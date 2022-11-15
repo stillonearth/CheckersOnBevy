@@ -205,7 +205,7 @@ pub struct GameState {
     pub moveset: [Vec<Position>; 24],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Resource, Debug, Clone)]
 pub struct Game {
     pub state: GameState,
     pub squares: Vec<Square>,

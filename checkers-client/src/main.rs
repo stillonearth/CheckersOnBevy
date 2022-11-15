@@ -1,24 +1,26 @@
 use bevy::prelude::*;
 
-use bevy_tasks::{TaskPool, TaskPoolBuilder};
+use bevy_tasks::TaskPoolBuilder;
 use environment::environment_client::EnvironmentClient;
 use environment::{CurrentStateRequest, ResetRequest};
 use serde_json;
 
 use futures::executor;
 
-use checkers_app::bevy_frontend;
+use checkers_app::bevy_frontend::{self, CheckersTaskPool};
 use checkers_core::game;
 
 pub mod environment {
     tonic::include_proto!("environment");
 }
 
+#[derive(Resource)]
 struct StateUpdateTimer(Timer);
 
-fn fetch_game_state(
-    client: &mut EnvironmentClient<tonic::transport::channel::Channel>,
-) -> game::GameState {
+#[derive(Resource, Deref, DerefMut)]
+struct CheckersGRPCClient(EnvironmentClient<tonic::transport::Channel>);
+
+fn fetch_game_state(client: &mut EnvironmentClient<tonic::transport::Channel>) -> game::GameState {
     let response = client.current_state(CurrentStateRequest {});
     let result = executor::block_on(response).unwrap();
     let state: game::GameState = serde_json::from_str(&result.get_ref().json).unwrap();
@@ -26,10 +28,7 @@ fn fetch_game_state(
 }
 
 #[allow(dead_code)]
-fn push_game_state(
-    state: game::GameState,
-    client: &mut EnvironmentClient<tonic::transport::channel::Channel>,
-) -> game::GameState {
+fn push_game_state(state: game::GameState, client: &mut CheckersGRPCClient) -> game::GameState {
     let reset_request = ResetRequest {
         state: serde_json::to_string(&state).unwrap(),
     };
@@ -45,8 +44,8 @@ fn sync_game_state(
     time: Res<Time>,
     mut timer: ResMut<StateUpdateTimer>,
     mut game: ResMut<game::Game>,
-    mut grpc_client: ResMut<EnvironmentClient<tonic::transport::channel::Channel>>,
-    task_pool: Res<TaskPool>,
+    mut grpc_client: ResMut<CheckersGRPCClient>,
+    task_pool: Res<CheckersTaskPool>,
 ) {
     task_pool.scope(|s| {
         s.spawn(async move {
@@ -70,7 +69,7 @@ fn sync_game_state(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let grpc_client = EnvironmentClient::connect("http://[::1]:50051").await?;
+    let grpc_client = CheckersGRPCClient(EnvironmentClient::connect("http://[::1]:50051").await?);
 
     let mut game = game::Game::new();
 
@@ -84,9 +83,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
 
     app.insert_resource(grpc_client);
-    app.insert_resource(pool);
+    app.insert_resource(CheckersTaskPool(pool));
     app.add_state(bevy_frontend::AppState::Idle);
-    app.insert_resource(StateUpdateTimer(Timer::from_seconds(0.01, true)));
+    app.insert_resource(StateUpdateTimer(Timer::from_seconds(
+        0.01,
+        TimerMode::Repeating,
+    )));
     app.add_system(sync_game_state);
     app.run();
 

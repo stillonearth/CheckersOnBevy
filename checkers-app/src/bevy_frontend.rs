@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use bevy::{app::AppExit, ecs::event::Events, pbr::*, prelude::*, utils::Duration};
 
@@ -8,7 +7,7 @@ use bevy_mod_picking::*;
 use bevy_tasks::TaskPool;
 use bevy_tweening::*;
 
-use checkers_ai::brain;
+use checkers_ai::brain::Brain;
 use checkers_core::game;
 
 // ---
@@ -24,7 +23,7 @@ const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
 // Resources
 // ---
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct SelectedSquare {
     pub entity: Option<Entity>,
 }
@@ -35,7 +34,7 @@ impl SelectedSquare {
     }
 }
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct SelectedPiece {
     pub entity: Option<Entity>,
 }
@@ -46,6 +45,7 @@ impl SelectedPiece {
     }
 }
 
+#[derive(Resource)]
 pub struct Materials {
     pub selected_color: Handle<StandardMaterial>,
     pub black_color: Handle<StandardMaterial>,
@@ -68,6 +68,12 @@ impl FromWorld for Materials {
         }
     }
 }
+
+#[derive(Resource, Deref, DerefMut, Clone)]
+pub struct CheckersBrain(pub Arc<Mutex<Brain>>);
+
+#[derive(Resource, Deref, DerefMut)]
+pub struct CheckersTaskPool(pub TaskPool);
 
 // ---
 // States
@@ -125,8 +131,8 @@ pub fn create_board(
         };
 
         commands
-            .spawn_bundle(bundle)
-            .insert_bundle(PickableBundle::default())
+            .spawn(bundle)
+            .insert(PickableBundle::default())
             .insert(*square);
     }
 }
@@ -273,7 +279,7 @@ pub fn create_pieces(
             transform: model_transform(*piece),
             ..Default::default()
         };
-        commands.spawn_bundle(bundle).insert(*piece);
+        commands.spawn(bundle).insert(*piece);
     }
 }
 
@@ -295,7 +301,7 @@ pub fn model_transform(piece: game::Piece) -> Transform {
     transform.rotate(Quat::from_rotation_z(-3.14));
 
     // Scale
-    transform.apply_non_uniform_scale(Vec3::new(0.02, 0.02, 0.02));
+    transform.scale = Vec3::new(0.02, 0.02, 0.02);
 
     return transform;
 }
@@ -310,7 +316,6 @@ fn event_piece_moved(
 
         let tween = Tween::new(
             EaseFunction::QuadraticInOut,
-            TweeningType::Once,
             Duration::from_millis(200),
             TransformPositionWithYJumpLens {
                 start: transform.translation,
@@ -347,17 +352,16 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
             font_size: 35.0,
             font: asset_server.load("Roboto-Regular.ttf"),
             color: Color::rgb(1.0, 0.2, 0.2),
-        }
-    ).with_alignment(
-        TextAlignment {
-            horizontal: HorizontalAlign::Left,
-            ..Default::default()
-        });
-   
+        },
+    )
+    .with_alignment(TextAlignment {
+        horizontal: HorizontalAlign::Left,
+        ..Default::default()
+    });
 
     // root node
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
                 position_type: PositionType::Absolute,
                 position: UiRect {
@@ -372,7 +376,7 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
         })
         .with_children(|parent| {
             parent
-                .spawn_bundle(TextBundle {
+                .spawn(TextBundle {
                     text: text,
                     ..Default::default()
                 })
@@ -382,7 +386,7 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
-        .spawn_bundle(ButtonBundle {
+        .spawn(ButtonBundle {
             style: Style {
                 size: Size::new(Val::Px(170.0), Val::Px(65.0)),
                 // center button
@@ -393,11 +397,11 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
                 align_items: AlignItems::Center,
                 ..Default::default()
             },
-            color: NORMAL_BUTTON.into(),
+            background_color: NORMAL_BUTTON.into(),
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn_bundle(TextBundle {
+            parent.spawn(TextBundle {
                 text: Text::from_section(
                     "Pass Turn",
                     TextStyle {
@@ -417,7 +421,7 @@ fn button_system(
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     mut interaction_query: Query<
-        (&Interaction, &mut UiColor),
+        (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
 ) {
@@ -464,10 +468,10 @@ fn next_move_text_update(game: Res<game::Game>, mut text_query: Query<(&mut Text
 // AI -- moving in game
 
 pub fn computer_turn(
-    brain: Res<Arc<Mutex<brain::Brain>>>,
+    brain: Res<CheckersBrain>,
     mut app_state: ResMut<State<AppState>>,
     mut game: ResMut<game::Game>,
-    task_pool: Res<TaskPool>,
+    task_pool: Res<CheckersTaskPool>,
 ) {
     if *app_state.current() != AppState::ComputerTurn {
         return;
@@ -475,8 +479,8 @@ pub fn computer_turn(
 
     task_pool.scope(|s| {
         s.spawn(async move {
-            let brain = brain.lock().unwrap();
             let mut state = game.state.clone();
+            let brain = brain.lock().unwrap();
             state.moveset = game.possible_moves();
             let action = brain.choose_action(state);
             if action.is_none() {
@@ -662,7 +666,7 @@ impl Plugin for UIPlugin {
 
 fn setup(mut commands: Commands) {
     // Light
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 3000.0,
             shadows_enabled: false,
@@ -681,11 +685,11 @@ fn setup(mut commands: Commands) {
 
     // Camera
     commands
-        .spawn_bundle(Camera3dBundle {
+        .spawn(Camera3dBundle {
             transform: camera_transform,
             ..Default::default()
         })
-        .insert_bundle(PickingCameraBundle::default());
+        .insert(PickingCameraBundle::default());
 }
 
 pub fn create_bevy_app(game: game::Game) -> App {
@@ -694,12 +698,15 @@ pub fn create_bevy_app(game: game::Game) -> App {
     app.insert_resource(Msaa { samples: 4 })
         // Set WindowDescriptor Resource to change title and size
         .insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
-        .insert_resource(WindowDescriptor {
-            title: "Checkers!".to_string(),
-            width: 800.,
-            height: 800.,
-            ..Default::default()
-        })
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                title: "Checkers on Bevy!".to_string(),
+                width: 800.,
+                height: 800.,
+                ..default()
+            },
+            ..default()
+        }))
         // Resources
         .insert_resource(game)
         // Entry Point

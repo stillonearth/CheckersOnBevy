@@ -1,12 +1,12 @@
 [package]
 edition = "2021"
 name = "checkers-client"
-version = "0.3.0"
+version = "0.4.1"
 
 [dependencies]
 anyhow = "1.0"
-bevy = { version = "0.8.1" }
-bevy_tasks = "0.8.1"
+bevy = { version = "0.9.0" }
+bevy_tasks = "0.9.0"
 checkers-app = { path = "../checkers-app" }
 checkers-core = { path = "../checkers-core" }
 futures = "0.3"
