@@ -1,4 +1,4 @@
-# 🏁 Checkers Game on 🦀 Rust and 🕊 Bevy, 🏋🏿 Gym Environment and 🕵️ AI Agent based on 🌴 Monte Carlo Tree Search (MCTS) with 🧠 Neural Heuristics (AlphaZero) on 🐍 Python and 🔥PyTorch
+# 🏁 Checkers on 🦀 Rust and 🕊 Bevy; 🏋🏿 Gym Environment and 👾 AI Agent based on 🌴 Monte Carlo Tree Search Trees with 🧠 Neural Heuristics (AlphaZero) with 🔥PyTorch
 
 **Sergei Surovtsev** <<ssurovsev@gmail.com>>
 <br />
@@ -23,7 +23,7 @@ In the first half of this project, we will implement a classic English Checkers 
 - 🦀 Introduction to Rust programming language
 - 🎮 Introduction to game programming with Bevy engine
 - 🏋🏿 Implementing an Gym environment from ground-up
-- 🕵️ Training an AI agent to play Checkers Ugolki Game with PyTorch
+- 👾 Training an AI agent to play Checkers Ugolki Game with PyTorch
 - 🌆 Deploying trained model to Rust environment
 
 ### 👩‍💻 Technical Formulation of Problem
@@ -229,7 +229,7 @@ A client that communicates with `checkers-server`. You can run multiple instance
 
 ---
 
-## 3. 🏅 Training AlphaZero to play 🏁 Checkers with PyTorch and 🐍 Python
+## 3. 👾 Training AlphaZero to play 🏁 Checkers with PyTorch and 🐍 Python
 
 Checkers is fully observable turn-based zero-sum game, which means:
 
@@ -371,7 +371,7 @@ class ActorCritic(nn.Module):
 
 `cargo build` to build all binaries.
 
-## 4.2 🏅 Training a model
+## 4.2 👾 Training an Agent
 
 1. Start a game logic rpc server `cargo run --bin checkers-server`
 2. Train a model in jupyter notebook `checkers-ai/python/MTSC-Checkers.ipynb`
