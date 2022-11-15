@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 const MOVE_LIMIT: u16 = 80;
 const CHAIN_LIMIT: u16 = 5;
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub enum GameTermination {
     White(u8),
     Black(u8),
@@ -12,7 +12,7 @@ pub enum GameTermination {
     Unterminated,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub enum MoveType {
     Invalid,
     Take,
@@ -22,7 +22,7 @@ pub enum MoveType {
 
 pub type Position = (u8, u8);
 
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerTurn {
     pub color: Color,
     pub turn_count: u16,
@@ -53,13 +53,13 @@ impl PlayerTurn {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize)]
 pub enum PieceType {
     Normal,
     King,
 }
 
-#[derive(Component, Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
+#[derive(Component, Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize)]
 pub struct Piece {
     pub color: Color,
     pub piece_type: PieceType,
@@ -111,9 +111,9 @@ impl Piece {
                         && direction == 1)
                     || self.piece_type == PieceType::King)
             {
-                return MoveType::Regular;
+                MoveType::Regular
             } else {
-                return MoveType::Invalid;
+                MoveType::Invalid
             }
         } else if collision_count == 1 {
             let diagonal_move = (self.y as i8 - new_square.y as i8).abs()
@@ -132,15 +132,15 @@ impl Piece {
                     || self.piece_type == PieceType::King)
             {
                 if collisions[0].color != self.color {
-                    return MoveType::Take;
+                    MoveType::Take
                 } else {
-                    return MoveType::Invalid;
+                    MoveType::Invalid
                 }
             } else {
-                return MoveType::Invalid;
+                MoveType::Invalid
             }
         } else {
-            return MoveType::Invalid;
+            MoveType::Invalid
         }
     }
 
@@ -172,11 +172,11 @@ impl Piece {
             }
         }
 
-        return collisions;
+        collisions
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Copy, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Serialize, Deserialize)]
 pub enum Color {
     White,
     Black,
@@ -197,7 +197,7 @@ impl Square {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Default, Clone, Serialize, Deserialize)]
 pub struct GameState {
     pub pieces: Vec<Piece>,
     pub removed_pieces: Vec<Piece>,
@@ -247,7 +247,7 @@ impl Default for Game {
             }
         }
 
-        return Game {
+        Game {
             squares,
             state: GameState {
                 pieces,
@@ -260,15 +260,15 @@ impl Default for Game {
                     chain_piece_id: -1,
                 },
             },
-        };
+        }
     }
 }
 
 impl Game {
     pub fn new() -> Game {
-        return Game {
+        Game {
             ..Default::default()
-        };
+        }
     }
 
     pub fn check_termination(&self) -> GameTermination {
@@ -300,7 +300,7 @@ impl Game {
             }
         }
 
-        return GameTermination::Unterminated;
+        GameTermination::Unterminated
     }
 
     pub fn step(
@@ -351,8 +351,8 @@ impl Game {
                 if moveset
                     .iter()
                     .filter(|m| {
-                        return piece.is_move_valid(Square { x: m.0, y: m.1 }, &self.state.pieces)
-                            == MoveType::Take;
+                        piece.is_move_valid(Square { x: m.0, y: m.1 }, &self.state.pieces)
+                            == MoveType::Take
                     })
                     .count()
                     > 0
@@ -390,7 +390,7 @@ impl Game {
             _ => {}
         }
 
-        return (move_type, &self.state, self.check_termination());
+        (move_type, &self.state, self.check_termination())
     }
 
     pub fn possible_moves(&self) -> [Vec<Position>; 24] {
@@ -423,7 +423,7 @@ impl Game {
             }
         }
 
-        return moveset;
+        moveset
     }
 }
 
@@ -446,7 +446,7 @@ pub fn white_start_positions() -> Vec<Position> {
         }
     }
 
-    return positions;
+    positions
 }
 
 pub fn black_start_positions() -> Vec<Position> {
@@ -459,5 +459,5 @@ pub fn black_start_positions() -> Vec<Position> {
         }
     }
 
-    return positions;
+    positions
 }

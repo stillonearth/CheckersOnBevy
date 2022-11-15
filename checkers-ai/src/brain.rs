@@ -14,7 +14,7 @@ pub struct Brain {
 impl Brain {
     pub fn new(model_path: String) -> Brain {
         Brain {
-            model_path: model_path,
+            model_path,
         }
     }
 
@@ -22,7 +22,7 @@ impl Brain {
         let model = tract_onnx::onnx()
             .model_for_path(self.model_path.as_str())
             .unwrap()
-            .with_input_fact(0, f32::fact(&[1, 8, 8]).into())
+            .with_input_fact(0, f32::fact([1, 8, 8]).into())
             .unwrap()
             .into_optimized()
             .unwrap()

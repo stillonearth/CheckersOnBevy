@@ -32,18 +32,18 @@ impl CheckersEnv {
     }
 
     pub fn reset(&mut self, state: Option<game::GameState>) -> game::GameState {
-        if state == None {
+        if state.is_none() {
             self.game.state = self.initial_state.clone();
         } else {
-            self.game.state = state.unwrap().clone();
+            self.game.state = state.unwrap();
         }
-        return self.game.state.clone();
+        self.game.state.clone()
     }
 
     pub fn step(&mut self, action: Action) -> Step {
         let (_move_type, state, termination) = self.game.step(action.piece, action.square);
 
-        return Step {
+        Step {
             obs: state.clone(),
             action,
             reward: match termination {
@@ -56,6 +56,6 @@ impl CheckersEnv {
                 game::GameTermination::Unterminated => false,
                 _ => true,
             },
-        };
+        }
     }
 }
