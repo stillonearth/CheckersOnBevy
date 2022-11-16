@@ -69,10 +69,10 @@ impl FromWorld for Materials {
     }
 }
 
-#[derive(Resource, Deref, DerefMut, Clone)]
+#[derive(Resource, Deref, DerefMut, Debug)]
 pub struct CheckersBrain(pub Arc<Mutex<Brain>>);
 
-#[derive(Resource, Deref, DerefMut)]
+#[derive(Resource, Deref, DerefMut, Debug)]
 pub struct CheckersTaskPool(pub TaskPool);
 
 // ---
@@ -468,9 +468,9 @@ fn next_move_text_update(game: Res<game::Game>, mut text_query: Query<(&mut Text
 // AI -- moving in game
 
 pub fn computer_turn(
-    brain: Res<CheckersBrain>,
     mut app_state: ResMut<State<AppState>>,
     mut game: ResMut<game::Game>,
+    brain: Res<CheckersBrain>,
     task_pool: Res<CheckersTaskPool>,
 ) {
     if *app_state.current() != AppState::ComputerTurn {
@@ -692,12 +692,19 @@ fn setup(mut commands: Commands) {
         .insert(PickingCameraBundle::default());
 }
 
-pub fn create_bevy_app(game: game::Game) -> App {
+pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: CheckersBrain*/) -> App {
     let mut app = App::new();
 
     app.insert_resource(Msaa { samples: 4 })
         // Set WindowDescriptor Resource to change title and size
         .insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
+        // Resources
+        .insert_resource(game)
+        // .insert_resource(brain)
+        // .insert_resource(pool)
+        // Entry Point
+        .add_startup_system(setup)
+        // External Plugins
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             window: WindowDescriptor {
                 title: "Checkers on Bevy!".to_string(),
@@ -707,12 +714,6 @@ pub fn create_bevy_app(game: game::Game) -> App {
             },
             ..default()
         }))
-        // Resources
-        .insert_resource(game)
-        // Entry Point
-        .add_startup_system(setup)
-        // External Plugins
-        .add_plugins(DefaultPlugins)
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         // Debug plugins
