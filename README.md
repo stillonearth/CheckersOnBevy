@@ -6,7 +6,7 @@ February 2022
 
 ## Project Description
 
-https://user-images.githubusercontent.com/97428129/194442842-42de82d6-b9a0-456a-909c-c6ee7b3037bb.mp4
+https://user-images.githubusercontent.com/97428129/202233088-5ad38413-e035-4750-8273-e5475080347d.mp4
 
 This project is a ground-up introduction to modern game programming using Rust on [Bevy](https://bevyengine.org/) Engine and AI programming using PyTorch.
 
