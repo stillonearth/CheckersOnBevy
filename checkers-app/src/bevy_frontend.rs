@@ -148,6 +148,8 @@ fn player_turn(
     pieces_query: Query<(Entity, &game::Piece)>,
     mut selections: Query<&mut Selection>,
 ) {
+    // let moveset = game.possible_moves();
+
     if *app_state.current() != AppState::PlayerTurn {
         return;
     }

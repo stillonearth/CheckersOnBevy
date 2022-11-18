@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +30,7 @@ pub struct PlayerTurn {
     pub turn_count: u16,
     pub chain_count: u16,
     pub chain_piece_id: i16,
+    pub american_move_possible: bool,
 }
 
 impl Default for PlayerTurn {
@@ -37,6 +40,7 @@ impl Default for PlayerTurn {
             turn_count: 0,
             chain_count: 0,
             chain_piece_id: 0,
+            american_move_possible: false,
         }
     }
 }
@@ -176,7 +180,7 @@ impl Piece {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Serialize, Deserialize, Hash)]
 pub enum Color {
     White,
     Black,
@@ -258,6 +262,7 @@ impl Default for Game {
                     chain_count: 0,
                     turn_count: 0,
                     chain_piece_id: -1,
+                    american_move_possible: false,
                 },
             },
         }
@@ -316,6 +321,13 @@ impl Game {
             return (MoveType::Regular, &self.state, self.check_termination());
         }
 
+        let moveset = self.possible_moves();
+
+        if moveset[piece.id as usize].len() == 0 {
+            // self.state.turn.change();
+            return (MoveType::Invalid, &self.state, self.check_termination());
+        }
+
         match piece.is_move_valid(square, &self.state.pieces) {
             MoveType::Take => {
                 move_type = MoveType::Take;
@@ -345,7 +357,6 @@ impl Game {
                     self.state.pieces.retain(|p| p.id != collision.id);
                 }
 
-                let moveset = self.possible_moves();
                 let moveset = &moveset[piece.id as usize];
 
                 if moveset
@@ -394,7 +405,7 @@ impl Game {
     }
 
     pub fn possible_moves(&self) -> [Vec<Position>; 24] {
-        let mut moveset: [Vec<Position>; 24] = Default::default();
+        let mut moveset: [Vec<(Position, MoveType)>; 24] = Default::default();
 
         for i in 0..24 {
             let p = self.state.pieces.iter().find(|p| p.id == i);
@@ -409,21 +420,62 @@ impl Game {
                 continue;
             }
 
-            // move to same position is passing a turn
-            // moveset[i as usize].push((p.x, p.y) as Position);
-
             for s in self.squares.iter() {
-                match p.is_move_valid(*s, &self.state.pieces) {
+                let move_type = p.is_move_valid(*s, &self.state.pieces);
+                let position: Position = (s.x, s.y);
+
+                match move_type {
                     MoveType::Take | MoveType::Regular => {
-                        let position: Position = (s.x, s.y);
-                        moveset[i as usize].push(position);
+                        moveset[i as usize].push((position, move_type));
                     }
                     _ => {}
                 }
             }
         }
 
-        moveset
+        let mut american_jump_possible: HashMap<Color, bool> = HashMap::new();
+        for i in 0..24 {
+            let p = self.state.pieces.iter().find(|p| p.id == i);
+            if p.is_none() {
+                continue;
+            }
+
+            let color = p.unwrap().color;
+            for j in 0..24 {
+                let p = self.state.pieces.iter().find(|p| p.id == j);
+                if p.is_none() {
+                    continue;
+                }
+
+                let other_color = p.unwrap().color;
+
+                if other_color == color {
+                    let jump_possible = moveset[j as usize].iter().any(|m| m.1 == MoveType::Take);
+                    if jump_possible {
+                        american_jump_possible.insert(color, true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        for i in 0..24 {
+            let p = self.state.pieces.iter().find(|p| p.id == i);
+            if p.is_none() {
+                continue;
+            }
+
+            let color = p.unwrap().color;
+            if american_jump_possible.contains_key(&color) {
+                moveset[i as usize] = moveset[i as usize]
+                    .iter()
+                    .filter(|m| m.1 == MoveType::Take)
+                    .cloned()
+                    .collect();
+            }
+        }
+
+        moveset.map(|m| m.iter().map(|m| m.0).collect())
     }
 }
 
