@@ -32,11 +32,12 @@ impl CheckersEnv {
     }
 
     pub fn reset(&mut self, state: Option<game::GameState>) -> game::GameState {
-        if state.is_none() {
-            self.game.state = self.initial_state.clone();
+        if let Some(state) = state {
+            self.game.state = state;
         } else {
-            self.game.state = state.unwrap();
+            self.game.state = self.initial_state.clone();
         }
+
         self.game.state.clone()
     }
 
@@ -52,10 +53,7 @@ impl CheckersEnv {
                 game::GameTermination::Draw => 0,
                 game::GameTermination::White(num) => -(num as i8),
             },
-            is_done: match termination {
-                game::GameTermination::Unterminated => false,
-                _ => true,
-            },
+            is_done: !matches!(termination, game::GameTermination::Unterminated),
         }
     }
 }

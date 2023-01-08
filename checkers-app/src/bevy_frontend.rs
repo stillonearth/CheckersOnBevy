@@ -161,8 +161,8 @@ fn player_turn(
     let (_old_entity, old_piece) = find_piece_by_entity(selected_piece.entity, &pieces_query);
 
     // Nothing has been selected before
-    if selected_piece.entity == None
-        && new_entity != None
+    if selected_piece.entity.is_none()
+        && new_entity.is_some()
         && new_piece.unwrap().color == game.state.turn.color
     {
         selected_piece.entity = new_entity;
@@ -180,7 +180,7 @@ fn player_turn(
     match move_type {
         game::MoveType::Invalid => {
             // chain move allowed for same piece
-            if new_piece != None
+            if new_piece.is_some()
                 && new_piece.unwrap().color == game.state.turn.color
                 && game.state.turn.chain_count == 0
             {
@@ -255,7 +255,7 @@ fn update_entity_pieces(
         }
 
         if p.piece_type != new_piece.piece_type {
-            t.rotate(Quat::from_rotation_z(-2.0 * 1.57));
+            t.rotate(Quat::from_rotation_z(-std::f32::consts::PI));
         }
     }
 }
@@ -288,21 +288,21 @@ pub fn model_transform(piece: game::Piece) -> Transform {
 
     // Rotation
     if piece.piece_type == game::PieceType::Normal {
-        transform.rotate(Quat::from_rotation_x(1.57));
+        transform.rotate(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
     } else {
-        transform.rotate(Quat::from_rotation_x(-1.57));
+        transform.rotate(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2));
     }
     if piece.color == game::Color::Black {
-        transform.rotate(Quat::from_rotation_y(-1.57));
+        transform.rotate(Quat::from_rotation_y(-std::f32::consts::FRAC_PI_2));
     } else {
-        transform.rotate(Quat::from_rotation_y(1.57));
+        transform.rotate(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2));
     }
-    transform.rotate(Quat::from_rotation_z(-3.14));
+    transform.rotate(Quat::from_rotation_z(-std::f32::consts::PI));
 
     // Scale
     transform.scale = Vec3::new(0.02, 0.02, 0.02);
 
-    return transform;
+    transform
 }
 
 fn event_piece_moved(
@@ -376,7 +376,7 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_children(|parent| {
             parent
                 .spawn(TextBundle {
-                    text: text,
+                    text,
                     ..Default::default()
                 })
                 .insert(NextMoveText);
@@ -414,6 +414,7 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
+#[allow(clippy::type_complexity)]
 fn button_system(
     mut app_state: ResMut<State<AppState>>,
     mut game: ResMut<game::Game>,
@@ -500,7 +501,6 @@ pub fn computer_turn(
                     println!("invalid: {:?}", action);
                     // game.state.turn.change();
                     app_state.set(AppState::PlayerTurn).unwrap();
-                    return;
                 }
                 _ => {}
             }
@@ -514,18 +514,12 @@ pub fn computer_turn(
 
 fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Option<Entity> {
     for event in event_reader.iter() {
-        match event {
-            PickingEvent::Selection(selection_event) => match selection_event {
-                SelectionEvent::JustSelected(selection_event) => {
-                    return Some(*selection_event);
-                }
-                _ => {}
-            },
-            _ => {}
+        if let PickingEvent::Selection(SelectionEvent::JustSelected(selection_event)) = event {
+            return Some(*selection_event);
         }
     }
 
-    return None;
+    None
 }
 
 fn find_piece_by_square(
@@ -534,68 +528,52 @@ fn find_piece_by_square(
 ) -> (Option<Entity>, Option<game::Piece>) {
     match pieces_query
         .iter()
-        .filter(|(_, p)| p.x == square.x && p.y == square.y)
-        .nth(0)
+        .find(|(_, p)| p.x == square.x && p.y == square.y)
     {
         // Square  hold piece
-        Some((e, p)) => {
-            return (Some(e), Some(*p));
-        }
+        Some((e, p)) => (Some(e), Some(*p)),
 
         // Square doesn't hold piece
-        _ => return (None, None),
-    };
+        _ => (None, None),
+    }
 }
 
 fn find_piece_by_entity(
     entity: Option<Entity>,
     pieces_query: &Query<(Entity, &game::Piece)>,
 ) -> (Option<Entity>, Option<game::Piece>) {
-    if entity == None {
+    if entity.is_none() {
         return (None, None);
     }
 
-    match pieces_query
-        .iter()
-        .filter(|(e, _)| e == &entity.unwrap())
-        .nth(0)
-    {
+    match pieces_query.iter().find(|(e, _)| e == &entity.unwrap()) {
         // Square  hold piece
-        Some((e, p)) => {
-            return (Some(e), Some(*p));
-        }
+        Some((e, p)) => (Some(e), Some(*p)),
 
         // Square doesn't hold piece
-        _ => return (None, None),
-    };
+        _ => (None, None),
+    }
 }
 
 fn find_square_by_entity(
     entity: Option<Entity>,
     square_query: &Query<(Entity, &game::Square)>,
 ) -> (Option<Entity>, Option<game::Square>) {
-    if entity == None {
+    if entity.is_none() {
         return (None, None);
     }
 
-    match square_query
-        .iter()
-        .filter(|(e, _)| e == &entity.unwrap())
-        .nth(0)
-    {
+    match square_query.iter().find(|(e, _)| e == &entity.unwrap()) {
         // Square  hold piece
-        Some((e, p)) => {
-            return (Some(e), Some(*p));
-        }
+        Some((e, p)) => (Some(e), Some(*p)),
 
         // Square doesn't hold piece
-        _ => return (None, None),
-    };
+        _ => (None, None),
+    }
 }
 
 pub fn piece_translation(piece: game::Piece) -> Vec3 {
-    let v1 = Vec3::new(piece.x as f32, 0.1, piece.y as f32);
-    return v1;
+    Vec3::new(piece.x as f32, 0.1, piece.y as f32)
 }
 
 // ---
@@ -720,5 +698,5 @@ pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: Checke
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin);
 
-    return app;
+    app
 }

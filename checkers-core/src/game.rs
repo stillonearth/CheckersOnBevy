@@ -271,6 +271,7 @@ impl Game {
         }
     }
 
+    #[allow(clippy::comparison_chain)]
     pub fn check_termination(&self) -> GameTermination {
         // Game end condition check
         let number_of_whites = self
@@ -287,9 +288,7 @@ impl Game {
             .filter(|p| (p.color == Color::Black))
             .count();
 
-        if self.state.turn.turn_count as u16 > MOVE_LIMIT
-            || number_of_whites == 0
-            || number_of_blacks == 0
+        if self.state.turn.turn_count > MOVE_LIMIT || number_of_whites == 0 || number_of_blacks == 0
         {
             if number_of_whites > number_of_blacks {
                 return GameTermination::White(number_of_whites as u8);
