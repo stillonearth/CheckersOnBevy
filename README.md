@@ -23,7 +23,7 @@ In the first half of this project, we will implement a classic English Checkers 
 - 🦀 Introduction to Rust programming language
 - 🎮 Introduction to game programming with Bevy engine
 - 🏋🏿 Implementing an Gym environment from ground-up
-- 👾 Training an AI agent to play Checkers Ugolki Game with PyTorch
+- 👾 Training an AI agent to play Checkers Game with PyTorch
 - 🌆 Deploying trained model to Rust environment
 
 ### 👩‍💻 Technical Formulation of Problem
