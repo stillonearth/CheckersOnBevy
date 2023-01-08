@@ -13,9 +13,7 @@ pub struct Brain {
 
 impl Brain {
     pub fn new(model_path: String) -> Brain {
-        Brain {
-            model_path,
-        }
+        Brain { model_path }
     }
 
     pub fn choose_action(&self, state: game::GameState) -> Option<gym_env::Action> {

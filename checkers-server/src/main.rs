@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-
 use tonic::{transport::Server, Request, Response, Status};
 
 use environment::environment_server::{Environment, EnvironmentServer};

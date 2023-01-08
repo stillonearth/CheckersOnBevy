@@ -4,7 +4,6 @@ use bevy_tasks::TaskPoolBuilder;
 use environment::environment_client::EnvironmentClient;
 use environment::{CurrentStateRequest, ResetRequest};
 
-
 use futures::executor;
 
 use checkers_app::bevy_frontend::{self, CheckersTaskPool};
