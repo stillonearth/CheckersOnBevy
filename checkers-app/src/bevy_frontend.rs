@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 
 use bevy::{app::AppExit, ecs::event::Events, pbr::*, prelude::*, utils::Duration};
 
-use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_picking::*;
 use bevy_tasks::TaskPool;
 use bevy_tweening::*;
@@ -720,10 +719,6 @@ pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: Checke
         // Application Plugins
         .init_resource::<Materials>()
         .add_plugin(BoardPlugin);
-
-    if DEBUG {
-        app.add_plugin(WorldInspectorPlugin::new());
-    }
 
     return app;
 }

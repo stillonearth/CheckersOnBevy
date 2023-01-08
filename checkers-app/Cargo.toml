@@ -6,10 +6,8 @@ version = "0.4.1"
 [dependencies]
 bevy = { version = "0.9.0" }
 bevy_tasks = "0.9.0"
-bevy-inspector-egui = { version = "0.14.0" }
-bevy_mod_picking = { version = "0.10.0" }
-bevy_tweening = { git = "https://github.com/djeedai/bevy_tweening.git", rev = "30bc490" }
-# bevy_tweening = { version = "0.5.0" }
+bevy_mod_picking = { version = "0.11.0" }
+bevy_tweening = { version = "0.6.0" }
 futures = "0.3"
 checkers-ai = { path = "../checkers-ai" }
 checkers-core = { path = "../checkers-core" }
