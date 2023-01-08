@@ -36,7 +36,7 @@ jobs:
           toolchain: nightly
           override: true
       - name: Install Dependencies
-        run: sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+        run: sudo apt-get update; sudo apt-get install protobuf-compiler pkg-config libx11-dev libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
@@ -67,7 +67,7 @@ jobs:
           components: clippy
           override: true
       - name: Install Dependencies
-        run: sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev
+        run: sudo apt-get update; sudo apt-get install protobuf-compiler pkg-config libx11-dev libasound2-dev libudev-dev
       - name: Run clippy
         uses: actions-rs/clippy-check@v1
         with:
