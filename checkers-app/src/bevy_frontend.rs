@@ -139,6 +139,7 @@ pub fn create_board(
         commands.spawn((
             bundle,
             PickableBundle::default(),
+            RaycastPickTarget::default(),
             *square,
             On::<Pointer<Click>>::run(event_selected_square),
         ));
@@ -149,7 +150,6 @@ fn event_selected_square(
     event: Listener<Pointer<Click>>,
     mut selected_square: ResMut<SelectedSquare>,
 ) {
-    println!("selected square: {:?}", event.target);
     selected_square.entity = Some(event.target);
     return;
 }
@@ -327,7 +327,7 @@ fn event_piece_moved(
 
         let tween = Tween::new(
             EaseFunction::QuadraticInOut,
-            Duration::from_millis(200),
+            Duration::from_millis(5),
             TransformPositionWithYJumpLens {
                 start: transform.translation,
                 end: piece_translation(*piece),
@@ -386,7 +386,8 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ..Default::default()
                 })
                 .insert(NextMoveText);
-        });
+        })
+        .insert(Pickable::IGNORE);
 }
 
 fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -418,7 +419,8 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ),
                 ..Default::default()
             });
-        });
+        })
+        .insert(Pickable::IGNORE);
 }
 
 #[allow(clippy::type_complexity)]
@@ -658,11 +660,12 @@ fn setup(mut commands: Commands) {
     camera_transform.scale.z = 1.5;
 
     // Camera
-    commands.spawn(Camera3dBundle {
-        transform: camera_transform,
-        ..Default::default()
-    });
-    // .insert(PickingCameraBundle::default());
+    commands
+        .spawn(Camera3dBundle {
+            transform: camera_transform,
+            ..Default::default()
+        })
+        .insert(RaycastPickCamera::default());
 }
 
 pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: CheckersBrain*/) -> App {
@@ -682,7 +685,7 @@ pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: Checke
         //     },
         //     ..default()
         // }))
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(low_latency_window_plugin()))
         .add_plugins(DefaultPickingPlugins)
         .init_resource::<Materials>()
         .add_plugins(BoardPlugin)
