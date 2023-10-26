@@ -2,7 +2,9 @@ use std::sync::{Arc, Mutex};
 
 use bevy::{app::AppExit, ecs::event::Events, pbr::*, prelude::*, utils::Duration};
 
-use bevy_mod_picking::*;
+// use bevy_mod_picking::selection::*;
+// use bevy_mod_picking::*;
+use bevy_mod_picking::prelude::*;
 use bevy_tasks::TaskPool;
 use bevy_tweening::*;
 
@@ -78,8 +80,9 @@ pub struct CheckersTaskPool(pub TaskPool);
 // States
 // ---
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, States, Default)]
 pub enum AppState {
+    #[default]
     PlayerTurn,
     ComputerTurn,
     #[allow(dead_code)]
@@ -97,6 +100,7 @@ struct NextMoveText;
 // Events
 // ---
 
+#[derive(Event)]
 pub struct EventPieceMove(pub Entity);
 
 // ---
@@ -112,7 +116,10 @@ pub fn create_board(
     square_materials: Res<Materials>,
 ) {
     // Add meshes and materials
-    let mesh = meshes.add(Mesh::from(shape::Plane { size: 1. }));
+    let mesh = meshes.add(Mesh::from(shape::Plane {
+        size: 1.,
+        ..default()
+    }));
     let game = game;
 
     for square in game.squares.iter() {
@@ -129,15 +136,27 @@ pub fn create_board(
             ..Default::default()
         };
 
-        commands
-            .spawn(bundle)
-            .insert(PickableBundle::default())
-            .insert(*square);
+        commands.spawn((
+            bundle,
+            PickableBundle::default(),
+            *square,
+            On::<Pointer<Click>>::run(event_selected_square),
+        ));
     }
 }
 
+fn event_selected_square(
+    event: Listener<Pointer<Click>>,
+    mut selected_square: ResMut<SelectedSquare>,
+) {
+    println!("selected square: {:?}", event.target);
+    selected_square.entity = Some(event.target);
+    return;
+}
+
 fn player_turn(
-    mut app_state: ResMut<State<AppState>>,
+    current_state: ResMut<State<AppState>>,
+    mut next_state: ResMut<NextState<AppState>>,
     mut game: ResMut<game::Game>,
     // bevy game entities
     mut selected_square: ResMut<SelectedSquare>,
@@ -145,9 +164,9 @@ fn player_turn(
     // queries
     square_query: Query<(Entity, &game::Square)>,
     pieces_query: Query<(Entity, &game::Piece)>,
-    mut selections: Query<&mut Selection>,
+    mut selections: Query<&mut PickSelection>,
 ) {
-    if *app_state.current() != AppState::PlayerTurn {
+    if *current_state != AppState::PlayerTurn {
         return;
     }
 
@@ -189,24 +208,17 @@ fn player_turn(
         }
         game::MoveType::Regular | game::MoveType::Pass => {
             for mut s in selections.iter_mut() {
-                s.set_selected(false);
+                s.is_selected = false;
             }
             selected_piece.deselect();
             selected_square.deselect();
 
             if !DEBUG {
-                app_state.set(AppState::ComputerTurn).unwrap();
+                next_state.set(AppState::ComputerTurn);
             }
         }
         _ => {}
     }
-}
-
-fn event_square_selected(
-    mut selected_square: ResMut<SelectedSquare>,
-    picking_events: EventReader<PickingEvent>,
-) {
-    selected_square.entity = filter_just_selected_event(picking_events);
 }
 
 fn check_game_termination(game: Res<game::Game>, mut _event_app_exit: ResMut<Events<AppExit>>) {
@@ -353,24 +365,18 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: Color::rgb(1.0, 0.2, 0.2),
         },
     )
-    .with_alignment(TextAlignment {
-        horizontal: HorizontalAlign::Left,
-        ..Default::default()
-    });
+    .with_alignment(TextAlignment::Left);
 
     // root node
     commands
         .spawn(NodeBundle {
             style: Style {
                 position_type: PositionType::Absolute,
-                position: UiRect {
-                    left: Val::Px(10.),
-                    top: Val::Px(10.),
-                    ..Default::default()
-                },
+                left: Val::Px(10.),
+                top: Val::Px(10.),
                 ..Default::default()
             },
-            visibility: Visibility { is_visible: false },
+            visibility: Visibility::Hidden,
             ..Default::default()
         })
         .with_children(|parent| {
@@ -387,7 +393,8 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn(ButtonBundle {
             style: Style {
-                size: Size::new(Val::Px(170.0), Val::Px(65.0)),
+                width: Val::Px(170.0),
+                height: Val::Px(65.0),
                 // center button
                 // margin: Rect::all(Val::Auto),
                 // horizontally center child text
@@ -416,7 +423,7 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 #[allow(clippy::type_complexity)]
 fn button_system(
-    mut app_state: ResMut<State<AppState>>,
+    mut next_state: ResMut<NextState<AppState>>,
     mut game: ResMut<game::Game>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
@@ -427,14 +434,14 @@ fn button_system(
 ) {
     for (interaction, mut color) in interaction_query.iter_mut() {
         match *interaction {
-            Interaction::Clicked => {
+            Interaction::Pressed => {
                 *color = PRESSED_BUTTON.into();
                 selected_square.entity = None;
                 selected_piece.entity = None;
                 game.state.turn.change();
 
                 if !DEBUG {
-                    app_state.set(AppState::ComputerTurn).unwrap();
+                    next_state.set(AppState::ComputerTurn);
                 }
             }
             Interaction::Hovered => {
@@ -468,12 +475,13 @@ fn next_move_text_update(game: Res<game::Game>, mut text_query: Query<(&mut Text
 // AI -- moving in game
 
 pub fn computer_turn(
-    mut app_state: ResMut<State<AppState>>,
+    app_state: ResMut<State<AppState>>,
+    mut next_state: ResMut<NextState<AppState>>,
     mut game: ResMut<game::Game>,
     brain: Res<CheckersBrain>,
     task_pool: Res<CheckersTaskPool>,
 ) {
-    if *app_state.current() != AppState::ComputerTurn {
+    if *app_state.into_inner() != AppState::ComputerTurn {
         return;
     }
 
@@ -485,7 +493,7 @@ pub fn computer_turn(
             let action = brain.choose_action(state);
             if action.is_none() {
                 game.state.turn.change();
-                app_state.set(AppState::PlayerTurn).unwrap();
+                next_state.set(AppState::PlayerTurn);
                 // app_state.set_changed();
                 return;
             }
@@ -495,12 +503,12 @@ pub fn computer_turn(
             game.state = state.clone();
             match move_type {
                 game::MoveType::Regular | game::MoveType::Pass => {
-                    app_state.set(AppState::PlayerTurn).unwrap();
+                    next_state.set(AppState::PlayerTurn);
                 }
                 game::MoveType::Invalid => {
                     println!("invalid: {:?}", action);
                     // game.state.turn.change();
-                    app_state.set(AppState::PlayerTurn).unwrap();
+                    next_state.set(AppState::PlayerTurn);
                 }
                 _ => {}
             }
@@ -511,16 +519,6 @@ pub fn computer_turn(
 // ---
 // Helpers
 // ---
-
-fn filter_just_selected_event(mut event_reader: EventReader<PickingEvent>) -> Option<Entity> {
-    for event in event_reader.iter() {
-        if let PickingEvent::Selection(SelectionEvent::JustSelected(selection_event)) = event {
-            return Some(*selection_event);
-        }
-    }
-
-    None
-}
 
 fn find_piece_by_square(
     square: game::Square,
@@ -607,33 +605,32 @@ impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
-            .add_startup_system(create_board)
-            .add_system(event_square_selected)
-            .add_system(player_turn.label("input"))
-            .add_system(update_entity_pieces.after("input"))
-            .add_system(check_game_termination)
+            .add_systems(Startup, create_board)
+            .add_systems(Update, player_turn)
+            .add_systems(Update, update_entity_pieces.after(player_turn))
+            .add_systems(Update, check_game_termination)
             .add_event::<EventPieceMove>()
-            .add_plugin(PiecesPlugin);
+            .add_plugins(PiecesPlugin);
     }
 }
 
 pub struct PiecesPlugin;
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(create_pieces)
-            .add_plugin(TweeningPlugin)
-            .add_system(highlight_piece)
-            .add_system(event_piece_moved);
+        app.add_systems(Startup, create_pieces)
+            .add_plugins(TweeningPlugin)
+            .add_systems(Update, highlight_piece)
+            .add_systems(Update, event_piece_moved);
     }
 }
 
 pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(init_text)
-            .add_startup_system(init_buttons)
-            .add_system(next_move_text_update)
-            .add_system(button_system);
+        app.add_systems(Startup, init_text)
+            .add_systems(Startup, init_buttons)
+            .add_systems(Update, next_move_text_update)
+            .add_systems(Update, button_system);
     }
 }
 
@@ -661,42 +658,35 @@ fn setup(mut commands: Commands) {
     camera_transform.scale.z = 1.5;
 
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            transform: camera_transform,
-            ..Default::default()
-        })
-        .insert(PickingCameraBundle::default());
+    commands.spawn(Camera3dBundle {
+        transform: camera_transform,
+        ..Default::default()
+    });
+    // .insert(PickingCameraBundle::default());
 }
 
 pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: CheckersBrain*/) -> App {
     let mut app = App::new();
 
-    app.insert_resource(Msaa { samples: 4 })
-        // Set WindowDescriptor Resource to change title and size
-        .insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
-        // Resources
+    app.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
         .insert_resource(game)
         // .insert_resource(brain)
         // .insert_resource(pool)
-        // Entry Point
-        .add_startup_system(setup)
         // External Plugins
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                title: "Checkers on Bevy!".to_string(),
-                width: 800.,
-                height: 800.,
-                ..default()
-            },
-            ..default()
-        }))
-        .add_plugin(PickingPlugin)
-        .add_plugin(InteractablePickingPlugin)
-        // Debug plugins
-        // Application Plugins
+        // .add_plugins(DefaultPlugins.set(WindowPlugin {
+        //     window: WindowDescriptor {
+        //         title: "Checkers on Bevy!".to_string(),
+        //         width: 800.,
+        //         height: 800.,
+        //         ..default()
+        //     },
+        //     ..default()
+        // }))
+        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPickingPlugins)
         .init_resource::<Materials>()
-        .add_plugin(BoardPlugin);
+        .add_plugins(BoardPlugin)
+        .add_systems(Startup, setup);
 
     app
 }

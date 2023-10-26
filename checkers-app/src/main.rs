@@ -1,13 +1,17 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use bevy_frontend::CheckersBrain;
-use bevy_frontend::CheckersTaskPool;
+use bevy::prelude::*;
+use bevy_tasks::TaskPoolBuilder;
+
 use checkers_ai::brain;
 use checkers_core::game;
 
 mod bevy_frontend;
-use bevy_tasks::TaskPoolBuilder;
+
+use crate::bevy_frontend::AppState;
+use crate::bevy_frontend::CheckersBrain;
+use crate::bevy_frontend::CheckersTaskPool;
 
 fn main() {
     let root_dir = env!("CARGO_MANIFEST_DIR");
@@ -27,9 +31,9 @@ fn main() {
     app.insert_resource(brain);
     app.insert_resource(pool);
 
-    app.add_state(bevy_frontend::AppState::PlayerTurn);
-    app.add_system(bevy_frontend::computer_turn);
-    app.add_plugin(bevy_frontend::UIPlugin);
+    app.add_state::<AppState>();
+    app.add_systems(Update, bevy_frontend::computer_turn);
+    app.add_plugins(bevy_frontend::UIPlugin);
 
     app.run();
 }

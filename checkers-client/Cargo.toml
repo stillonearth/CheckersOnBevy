@@ -5,16 +5,16 @@ version = "0.4.1"
 
 [dependencies]
 anyhow = "1.0.68"
-bevy = { version = "0.9.1" }
-bevy_tasks = "0.9.1"
+bevy = { version = "0.11" }
+bevy_tasks = "0.11"
 checkers-app = { path = "../checkers-app" }
 checkers-core = { path = "../checkers-core" }
 futures = "0.3.25"
-prost = "0.11.5"
+prost = "0.12"
 serde = "1.0.152"
 serde_json = "1.0.91"
 tokio = { version = "1.24.1", features = ["macros", "rt-multi-thread"] }
-tonic = "0.8.3"
+tonic = "0.10"
 
 [build-dependencies]
-tonic-build = "0.8.2"
+tonic-build = "0.10"

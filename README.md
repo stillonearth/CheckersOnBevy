@@ -17,6 +17,7 @@ In the first half of this project, we will implement a classic English Checkers 
 - **0.3.0** `bevy` updated to 0.8.1
 - **0.4.0** `tch-rs` switched to `tract-onnx `
 - **0.4.1** `bevy` updated to 0.9.0
+- **0.5.0** `bevy` updated to 0.11
 
 ### 🎯 Project Goals
 
