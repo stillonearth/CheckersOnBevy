@@ -9,7 +9,7 @@ use bevy_tasks::TaskPool;
 use bevy_tweening::*;
 
 use checkers_ai::brain::Brain;
-use checkers_core::game;
+use checkers_core::game::{self, black_start_positions, white_start_positions};
 
 // ---
 // Global Variables
@@ -102,6 +102,13 @@ struct NextMoveText;
 
 #[derive(Event)]
 pub struct EventPieceMove(pub Entity);
+
+#[derive(Event)]
+pub struct EventPieceOffBoard {
+    pub entity: Entity,
+    pub piece: game::Piece,
+    pub translation: Vec3,
+}
 
 // ---
 // Systems
@@ -242,6 +249,7 @@ fn update_entity_pieces(
     game: Res<game::Game>,
     // events
     mut event_piece_move: EventWriter<EventPieceMove>,
+    mut event_piece_off_board: EventWriter<EventPieceOffBoard>,
     // queries
     mut query: Query<(Entity, &mut Visibility, &mut Transform, &game::Piece)>,
 ) {
@@ -253,9 +261,14 @@ fn update_entity_pieces(
         let new_piece = game.state.pieces.iter().find(|_p| _p.id == p.id);
 
         if new_piece.is_none() {
-            // _v.is_visible = false;
-            let entity = commands.entity(e);
-            entity.despawn_recursive();
+            event_piece_off_board.send(EventPieceOffBoard {
+                entity: e,
+                piece: *p,
+                translation: t.translation,
+            });
+
+            commands.entity(e).remove::<game::Piece>();
+
             continue;
         }
 
@@ -327,7 +340,7 @@ fn event_piece_moved(
 
         let tween = Tween::new(
             EaseFunction::QuadraticInOut,
-            Duration::from_millis(5),
+            Duration::from_millis(1000),
             TransformPositionWithYJumpLens {
                 start: transform.translation,
                 end: piece_translation(*piece),
@@ -335,6 +348,43 @@ fn event_piece_moved(
         );
 
         commands.entity(entity).insert(Animator::new(tween));
+    }
+}
+
+fn event_piece_off_board(
+    game: Res<game::Game>,
+    mut commands: Commands,
+    mut picking_events: EventReader<EventPieceOffBoard>,
+) {
+    for event in picking_events.iter() {
+        // let (entity, piece, transform) = query.get_mut(event.0).unwrap();
+
+        let num_removed_pieces = game
+            .state
+            .removed_pieces
+            .iter()
+            .filter(|rp| rp.color == event.piece.color)
+            .count() as f32;
+
+        let black_start = (0.0, -1.0);
+        let white_start = (0.0, 8.0);
+        let (start_x, start_y) = match event.piece.color {
+            game::Color::Black => (black_start.0 as f32, black_start.1 as f32),
+            game::Color::White => (white_start.0 as f32, white_start.1 as f32),
+        };
+
+        let translation_end = Vec3::new(start_y, 0.0, start_x + num_removed_pieces - 1.0);
+
+        let tween = Tween::new(
+            EaseFunction::QuadraticInOut,
+            Duration::from_millis(1000),
+            TransformPositionWithYJumpLens {
+                start: event.translation,
+                end: translation_end,
+            },
+        );
+
+        commands.entity(event.entity).insert(Animator::new(tween));
     }
 }
 
@@ -396,11 +446,7 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
             style: Style {
                 width: Val::Px(170.0),
                 height: Val::Px(65.0),
-                // center button
-                // margin: Rect::all(Val::Auto),
-                // horizontally center child text
                 justify_content: JustifyContent::Center,
-                // vertically center child text
                 align_items: AlignItems::Center,
                 ..Default::default()
             },
@@ -462,7 +508,7 @@ fn next_move_text_update(game: Res<game::Game>, mut text_query: Query<(&mut Text
 
     for (mut text, _tag) in text_query.iter_mut() {
         let str = format!(
-            "Checkers with Rust, Python + AI Agent with AlphaZero\nMove: {}  Turn: {}",
+            "CheckersOnBevy\nMove: {}  Turn: {}",
             match game.state.turn.color {
                 game::Color::White => "White",
                 game::Color::Black => "Black",
@@ -612,6 +658,7 @@ impl Plugin for BoardPlugin {
             .add_systems(Update, update_entity_pieces.after(player_turn))
             .add_systems(Update, check_game_termination)
             .add_event::<EventPieceMove>()
+            .add_event::<EventPieceOffBoard>()
             .add_plugins(PiecesPlugin);
     }
 }
@@ -622,7 +669,8 @@ impl Plugin for PiecesPlugin {
         app.add_systems(Startup, create_pieces)
             .add_plugins(TweeningPlugin)
             .add_systems(Update, highlight_piece)
-            .add_systems(Update, event_piece_moved);
+            .add_systems(Update, event_piece_moved)
+            .add_systems(Update, event_piece_off_board);
     }
 }
 
@@ -673,8 +721,6 @@ pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: Checke
 
     app.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
         .insert_resource(game)
-        // .insert_resource(brain)
-        // .insert_resource(pool)
         // External Plugins
         // .add_plugins(DefaultPlugins.set(WindowPlugin {
         //     window: WindowDescriptor {
@@ -687,6 +733,7 @@ pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: Checke
         // }))
         .add_plugins(DefaultPlugins.set(low_latency_window_plugin()))
         .add_plugins(DefaultPickingPlugins)
+        .add_systems(Update, bevy_mod_picking::debug::hide_pointer_text)
         .init_resource::<Materials>()
         .add_plugins(BoardPlugin)
         .add_systems(Startup, setup);
