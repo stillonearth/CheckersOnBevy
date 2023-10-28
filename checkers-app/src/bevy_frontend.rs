@@ -9,7 +9,7 @@ use bevy_tasks::TaskPool;
 use bevy_tweening::*;
 
 use checkers_ai::brain::Brain;
-use checkers_core::game::{self, black_start_positions, white_start_positions};
+use checkers_core::game::{self};
 
 // ---
 // Global Variables
@@ -158,7 +158,6 @@ fn event_selected_square(
     mut selected_square: ResMut<SelectedSquare>,
 ) {
     selected_square.entity = Some(event.target);
-    return;
 }
 
 fn player_turn(

@@ -6,7 +6,7 @@ use environment::{CurrentStateRequest, ResetRequest};
 
 use futures::executor;
 
-use checkers_app::bevy_frontend::{self, CheckersTaskPool};
+use checkers_app::bevy_frontend::{self, AppState, CheckersTaskPool};
 use checkers_core::game;
 
 pub mod environment {
@@ -83,12 +83,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app.insert_resource(grpc_client);
     app.insert_resource(CheckersTaskPool(pool));
-    app.add_state(bevy_frontend::AppState::Idle);
+    app.add_state::<AppState>();
     app.insert_resource(StateUpdateTimer(Timer::from_seconds(
         0.01,
         TimerMode::Repeating,
     )));
-    app.add_system(sync_game_state);
+    app.add_systems(Update, sync_game_state);
     app.run();
 
     Ok(())
