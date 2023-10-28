@@ -15,3 +15,4 @@ bevy_tweening = { version ="0.8" }
 futures = "0.3"
 checkers-ai = { path = "../checkers-ai" }
 checkers-core = { path = "../checkers-core" }
+bevy-inspector-egui = "0.20"

@@ -2,8 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use bevy::{app::AppExit, ecs::event::Events, pbr::*, prelude::*, utils::Duration};
 
-// use bevy_mod_picking::selection::*;
-// use bevy_mod_picking::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_mod_picking::prelude::*;
 use bevy_tasks::TaskPool;
 use bevy_tweening::*;
@@ -422,10 +421,9 @@ fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
             style: Style {
                 position_type: PositionType::Absolute,
                 left: Val::Px(10.),
-                top: Val::Px(10.),
+                bottom: Val::Px(10.),
                 ..Default::default()
             },
-            visibility: Visibility::Hidden,
             ..Default::default()
         })
         .with_children(|parent| {
@@ -731,6 +729,7 @@ pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: Checke
         //     ..default()
         // }))
         .add_plugins(DefaultPlugins.set(low_latency_window_plugin()))
+        .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(DefaultPickingPlugins)
         .add_systems(Update, bevy_mod_picking::debug::hide_pointer_text)
         .init_resource::<Materials>()
