@@ -3,37 +3,49 @@ use std::sync::Mutex;
 
 use bevy::prelude::*;
 use bevy_tasks::TaskPoolBuilder;
+use clap::Parser;
 
 use checkers_ai::brain;
 use checkers_core::game;
 
-mod bevy_frontend;
+use checkers_app::bevy_frontend::*;
 
-use crate::bevy_frontend::AppState;
-use crate::bevy_frontend::CheckersBrain;
-use crate::bevy_frontend::CheckersTaskPool;
+#[derive(Parser, Debug)]
+struct Args {
+    #[arg(long)]
+    mode: String,
+}
 
 fn main() {
+    let args = Args::parse();
+
     let root_dir = env!("CARGO_MANIFEST_DIR");
     let model_path = format!("{}{}", root_dir, "/assets/model.onnx");
 
-    let brain = CheckersBrain(Arc::new(Mutex::new(brain::Brain::new(model_path))));
-    let pool = CheckersTaskPool(
-        TaskPoolBuilder::new()
-            .thread_name("Busy Behavior ThreadPool".to_string())
-            .num_threads(1)
-            .build(),
-    );
-    let game = game::Game::new();
+    let game_mode = match args.mode.as_str() {
+        "ai" => GameMode::VsAI,
+        "p2p" => GameMode::VsNetwork,
+        _ => GameMode::VsPlayer,
+    };
 
-    let mut app = bevy_frontend::create_bevy_app(game /*pool, brain*/);
+    let mut app = create_bevy_app(game::Game::new(), game_mode);
 
-    app.insert_resource(brain);
-    app.insert_resource(pool);
+    if game_mode == GameMode::VsAI {
+        let brain = CheckersBrain(Arc::new(Mutex::new(brain::Brain::new(model_path))));
+        let pool = CheckersTaskPool(
+            TaskPoolBuilder::new()
+                .thread_name("Busy Behavior ThreadPool".to_string())
+                .num_threads(1)
+                .build(),
+        );
+
+        app.insert_resource(brain);
+        app.insert_resource(pool);
+        app.add_systems(Update, ai_turn);
+    }
 
     app.add_state::<AppState>();
-    app.add_systems(Update, bevy_frontend::computer_turn);
-    app.add_plugins(bevy_frontend::UIPlugin);
+    app.add_plugins(UIPlugin);
 
     app.run();
 }

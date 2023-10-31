@@ -5,7 +5,11 @@ use bevy::{app::AppExit, ecs::event::Events, pbr::*, prelude::*, utils::Duration
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_mod_picking::prelude::*;
 use bevy_tasks::TaskPool;
+use bevy_tokio_tasks::*;
 use bevy_tweening::*;
+use bevy_veilid::*;
+
+use copypasta::{ClipboardContext, ClipboardProvider};
 
 use checkers_ai::brain::Brain;
 use checkers_core::game::{self};
@@ -22,6 +26,13 @@ const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
 // ---
 // Resources
 // ---
+
+#[derive(Resource, PartialEq, Eq, Copy, Clone)]
+pub enum GameMode {
+    VsAI,
+    VsPlayer,
+    VsNetwork,
+}
 
 #[derive(Resource, Default)]
 pub struct SelectedSquare {
@@ -82,18 +93,33 @@ pub struct CheckersTaskPool(pub TaskPool);
 #[derive(Debug, Clone, Eq, PartialEq, Hash, States, Default)]
 pub enum AppState {
     #[default]
-    PlayerTurn,
-    ComputerTurn,
+    Player1Turn,
+    Player2Turn,
     #[allow(dead_code)]
     Idle,
 }
 
 // ---
-// Components
+// UI Components
 // ---
 
 #[derive(Component)]
 struct NextMoveText;
+
+#[derive(Component)]
+struct VeilidDHTKeyText;
+
+#[derive(Component)]
+struct VeilidUINode;
+
+#[derive(Component)]
+struct VeilidButtonCopyDHT;
+
+#[derive(Component)]
+struct VeilidButtonPasteDHT;
+
+#[derive(Component)]
+struct ButtonPassTurn;
 
 // ---
 // Events
@@ -159,8 +185,56 @@ fn event_selected_square(
     selected_square.entity = Some(event.target);
 }
 
+pub fn ai_turn(
+    app_state: ResMut<State<AppState>>,
+    game_mode: Res<GameMode>,
+    mut next_state: ResMut<NextState<AppState>>,
+    mut game: ResMut<game::Game>,
+    brain: Res<CheckersBrain>,
+    task_pool: Res<CheckersTaskPool>,
+) {
+    if *game_mode.into_inner() != GameMode::VsAI {
+        return;
+    }
+
+    if *app_state.into_inner() != AppState::Player2Turn {
+        return;
+    }
+
+    task_pool.scope(|s| {
+        s.spawn(async move {
+            let mut state = game.state.clone();
+            let brain = brain.lock().unwrap();
+            state.moveset = game.possible_moves();
+            let action = brain.choose_action(state);
+            if action.is_none() {
+                game.state.turn.change();
+                next_state.set(AppState::Player1Turn);
+                // app_state.set_changed();
+                return;
+            }
+
+            let action = action.unwrap();
+            let (move_type, state, _) = game.step(action.piece, action.square);
+            game.state = state.clone();
+            match move_type {
+                game::MoveType::Regular | game::MoveType::Pass => {
+                    next_state.set(AppState::Player1Turn);
+                }
+                game::MoveType::Invalid => {
+                    println!("invalid: {:?}", action);
+                    // game.state.turn.change();
+                    next_state.set(AppState::Player1Turn);
+                }
+                _ => {}
+            }
+        })
+    });
+}
+
 fn player_turn(
     current_state: ResMut<State<AppState>>,
+    game_mode: Res<GameMode>,
     mut next_state: ResMut<NextState<AppState>>,
     mut game: ResMut<game::Game>,
     // bevy game entities
@@ -171,7 +245,7 @@ fn player_turn(
     pieces_query: Query<(Entity, &game::Piece)>,
     mut selections: Query<&mut PickSelection>,
 ) {
-    if *current_state != AppState::PlayerTurn {
+    if *current_state == AppState::Player2Turn && *game_mode == GameMode::VsAI {
         return;
     }
 
@@ -219,7 +293,7 @@ fn player_turn(
             selected_square.deselect();
 
             if !DEBUG {
-                next_state.set(AppState::ComputerTurn);
+                next_state.set(AppState::Player2Turn);
             }
         }
         _ => {}
@@ -404,6 +478,113 @@ fn highlight_piece(
 
 // UI -- Buttons & Text
 
+fn init_veilid_text(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font = asset_server.load("Roboto-Regular.ttf");
+    let text = Text::from_section(
+        "INITIALIZING VEILID...",
+        TextStyle {
+            font_size: 35.0,
+            font: font.clone(),
+            color: Color::WHITE,
+        },
+    )
+    .with_alignment(TextAlignment::Center);
+
+    // root node
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                position_type: PositionType::Absolute,
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: BackgroundColor(Color::RED),
+            z_index: ZIndex::Local(1),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent
+                .spawn(TextBundle {
+                    text,
+                    ..Default::default()
+                })
+                .insert(VeilidDHTKeyText);
+
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent
+                        .spawn(ButtonBundle {
+                            style: Style {
+                                width: Val::Px(450.0),
+                                height: Val::Px(65.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..Default::default()
+                            },
+                            background_color: NORMAL_BUTTON.into(),
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            parent.spawn(TextBundle {
+                                text: Text::from_section(
+                                    "Copy DHT key to clipboard and start game",
+                                    TextStyle {
+                                        font: font.clone(),
+                                        font_size: 25.0,
+                                        color: Color::rgb(0.9, 0.9, 0.9),
+                                    },
+                                ),
+                                ..Default::default()
+                            });
+                        })
+                        .insert(Pickable::IGNORE)
+                        .insert(VeilidButtonCopyDHT)
+                        .insert(Visibility::Hidden);
+
+                    parent
+                        .spawn(ButtonBundle {
+                            style: Style {
+                                width: Val::Px(450.0),
+                                height: Val::Px(65.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..Default::default()
+                            },
+                            background_color: NORMAL_BUTTON.into(),
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            parent.spawn(TextBundle {
+                                text: Text::from_section(
+                                    "Copy DHT key from clipboard and join game",
+                                    TextStyle {
+                                        font: font.clone(),
+                                        font_size: 25.0,
+                                        color: Color::rgb(0.9, 0.9, 0.9),
+                                    },
+                                ),
+                                ..Default::default()
+                            });
+                        })
+                        .insert(Pickable::IGNORE)
+                        .insert(VeilidButtonPasteDHT)
+                        .insert(Visibility::Hidden);
+                });
+        })
+        .insert(Pickable::IGNORE)
+        .insert(Name::new("veilid ui"));
+}
+
 fn init_text(mut commands: Commands, asset_server: Res<AssetServer>) {
     let text = Text::from_section(
         "",
@@ -451,33 +632,35 @@ fn init_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn(TextBundle {
-                text: Text::from_section(
-                    "Pass Turn",
-                    TextStyle {
-                        font: asset_server.load("Roboto-Regular.ttf"),
-                        font_size: 30.0,
-                        color: Color::rgb(0.9, 0.9, 0.9),
-                    },
-                ),
-                ..Default::default()
-            });
+            parent
+                .spawn(TextBundle {
+                    text: Text::from_section(
+                        "Pass Turn",
+                        TextStyle {
+                            font: asset_server.load("Roboto-Regular.ttf"),
+                            font_size: 30.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                        },
+                    ),
+                    ..Default::default()
+                })
+                .insert(ButtonPassTurn);
         })
         .insert(Pickable::IGNORE);
 }
 
 #[allow(clippy::type_complexity)]
-fn button_system(
+fn pass_turn_button_system(
     mut next_state: ResMut<NextState<AppState>>,
     mut game: ResMut<game::Game>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
+        (&ButtonPassTurn, &Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, mut color) in interaction_query.iter_mut() {
+    for (_, interaction, mut color) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Pressed => {
                 *color = PRESSED_BUTTON.into();
@@ -486,8 +669,61 @@ fn button_system(
                 game.state.turn.change();
 
                 if !DEBUG {
-                    next_state.set(AppState::ComputerTurn);
+                    next_state.set(AppState::Player2Turn);
                 }
+            }
+            Interaction::Hovered => {
+                *color = HOVERED_BUTTON.into();
+            }
+            Interaction::None => {
+                *color = NORMAL_BUTTON.into();
+            }
+        }
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn copy_dht_key_button_system(
+    mut interaction_query: Query<
+        (&VeilidButtonCopyDHT, &Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    veilid_app: Res<VeilidApp>,
+) {
+    for (_, interaction, mut color) in interaction_query.iter_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                let mut ctx = ClipboardContext::new().unwrap();
+                let msg = format!("{}", veilid_app.clone().unwrap().our_dht_key);
+                ctx.set_contents(msg.to_owned()).unwrap();
+            }
+            Interaction::Hovered => {
+                *color = HOVERED_BUTTON.into();
+            }
+            Interaction::None => {
+                *color = NORMAL_BUTTON.into();
+            }
+        }
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn paste_dht_key_button_system(
+    mut interaction_query: Query<
+        (&VeilidButtonPasteDHT, &Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    veilid_app: Res<VeilidApp>,
+) {
+    for (_, interaction, mut color) in interaction_query.iter_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                let mut ctx = ClipboardContext::new().unwrap();
+                let msg = format!("{}", veilid_app.clone().unwrap().our_dht_key);
+                ctx.set_contents(msg.to_owned()).unwrap();
+                let content = ctx.get_contents().unwrap();
+
+                println!("{}", content);
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
@@ -515,50 +751,6 @@ fn next_move_text_update(game: Res<game::Game>, mut text_query: Query<(&mut Text
         .to_string();
         text.sections[0].value = str;
     }
-}
-
-// AI -- moving in game
-
-pub fn computer_turn(
-    app_state: ResMut<State<AppState>>,
-    mut next_state: ResMut<NextState<AppState>>,
-    mut game: ResMut<game::Game>,
-    brain: Res<CheckersBrain>,
-    task_pool: Res<CheckersTaskPool>,
-) {
-    if *app_state.into_inner() != AppState::ComputerTurn {
-        return;
-    }
-
-    task_pool.scope(|s| {
-        s.spawn(async move {
-            let mut state = game.state.clone();
-            let brain = brain.lock().unwrap();
-            state.moveset = game.possible_moves();
-            let action = brain.choose_action(state);
-            if action.is_none() {
-                game.state.turn.change();
-                next_state.set(AppState::PlayerTurn);
-                // app_state.set_changed();
-                return;
-            }
-
-            let action = action.unwrap();
-            let (move_type, state, _) = game.step(action.piece, action.square);
-            game.state = state.clone();
-            match move_type {
-                game::MoveType::Regular | game::MoveType::Pass => {
-                    next_state.set(AppState::PlayerTurn);
-                }
-                game::MoveType::Invalid => {
-                    println!("invalid: {:?}", action);
-                    // game.state.turn.change();
-                    next_state.set(AppState::PlayerTurn);
-                }
-                _ => {}
-            }
-        })
-    });
 }
 
 // ---
@@ -677,7 +869,7 @@ impl Plugin for UIPlugin {
         app.add_systems(Startup, init_text)
             .add_systems(Startup, init_buttons)
             .add_systems(Update, next_move_text_update)
-            .add_systems(Update, button_system);
+            .add_systems(Update, pass_turn_button_system);
     }
 }
 
@@ -713,28 +905,51 @@ fn setup(mut commands: Commands) {
         .insert(RaycastPickCamera::default());
 }
 
-pub fn create_bevy_app(game: game::Game, /*pool: CheckersTaskPool, brain: CheckersBrain*/) -> App {
+fn on_veilid_initialized(
+    mut er_world_initialized: EventReader<VeilidInitializedEvent>,
+    mut text_query: Query<(&mut Text, &VeilidDHTKeyText)>,
+    mut set: ParamSet<(
+        Query<(Entity, &VeilidButtonCopyDHT, &mut Visibility)>,
+        Query<(Entity, &VeilidButtonPasteDHT, &mut Visibility)>,
+    )>,
+) {
+    for _ in er_world_initialized.iter() {
+        for (mut text, _tag) in text_query.iter_mut() {
+            let str = format!("Veilid Initialized");
+            text.sections[0].value = str;
+        }
+
+        for (_, _, mut v) in set.p0().iter_mut() {
+            *v = Visibility::Visible;
+        }
+        for (_, _, mut v) in set.p1().iter_mut() {
+            *v = Visibility::Visible;
+        }
+    }
+}
+
+pub fn create_bevy_app(game: game::Game, game_mode: GameMode) -> App {
     let mut app = App::new();
 
     app.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.2)))
         .insert_resource(game)
-        // External Plugins
-        // .add_plugins(DefaultPlugins.set(WindowPlugin {
-        //     window: WindowDescriptor {
-        //         title: "Checkers on Bevy!".to_string(),
-        //         width: 800.,
-        //         height: 800.,
-        //         ..default()
-        //     },
-        //     ..default()
-        // }))
         .add_plugins(DefaultPlugins.set(low_latency_window_plugin()))
-        .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(DefaultPickingPlugins)
+        // .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Update, bevy_mod_picking::debug::hide_pointer_text)
         .init_resource::<Materials>()
+        .insert_resource(game_mode)
         .add_plugins(BoardPlugin)
         .add_systems(Startup, setup);
+
+    if game_mode == GameMode::VsNetwork {
+        app.add_plugins(TokioTasksPlugin::default())
+            .add_plugins(VeilidPlugin)
+            .add_systems(Update, on_veilid_initialized)
+            .add_systems(Update, copy_dht_key_button_system)
+            .add_systems(Update, paste_dht_key_button_system)
+            .add_systems(Startup, init_veilid_text);
+    }
 
     app
 }

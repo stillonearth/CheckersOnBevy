@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = fetch_game_state(&mut grpc_client.clone());
     game.state = state;
 
-    let mut app = bevy_frontend::create_bevy_app(game);
+    let mut app = bevy_frontend::create_bevy_app(game, bevy_frontend::GameMode::VsPlayer);
     let pool = TaskPoolBuilder::new()
         .thread_name("Busy Behavior ThreadPool".to_string())
         .num_threads(1)
