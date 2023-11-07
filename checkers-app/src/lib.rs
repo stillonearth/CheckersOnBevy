@@ -18,5 +18,6 @@ pub enum AppState {
 pub mod ai;
 pub mod app;
 pub mod board;
+
 mod ui;
 mod veilid;
