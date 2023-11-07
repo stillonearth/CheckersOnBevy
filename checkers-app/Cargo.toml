@@ -17,7 +17,7 @@ checkers-ai = { path = "../checkers-ai" }
 checkers-core = { path = "../checkers-core" }
 bevy-inspector-egui = "0.20"
 clap = { version = "4.3.21", features = ["derive"] }
-bevy_veilid = {path="../../bevy_veilid"}
+bevy_veilid = "0.1.0"
 bevy-tokio-tasks = "0.11"
 copypasta = "0.10"
 serde = { version = "1.0.188", features= ["derive"] }
