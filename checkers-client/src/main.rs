@@ -6,7 +6,9 @@ use environment::{CurrentStateRequest, ResetRequest};
 
 use futures::executor;
 
-use checkers_app::bevy_frontend::{self, AppState, CheckersTaskPool};
+use checkers_app::ai::CheckersTaskPool;
+use checkers_app::board::*;
+use checkers_app::*;
 use checkers_core::game;
 
 pub mod environment {
@@ -38,8 +40,8 @@ fn push_game_state(state: game::GameState, client: &mut CheckersGRPCClient) -> g
 }
 
 fn sync_game_state(
-    mut selected_square: ResMut<bevy_frontend::SelectedSquare>,
-    mut selected_piece: ResMut<bevy_frontend::SelectedPiece>,
+    mut selected_square: ResMut<SelectedSquare>,
+    mut selected_piece: ResMut<SelectedPiece>,
     time: Res<Time>,
     mut timer: ResMut<StateUpdateTimer>,
     mut game: ResMut<game::Game>,
@@ -75,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = fetch_game_state(&mut grpc_client.clone());
     game.state = state;
 
-    let mut app = bevy_frontend::create_bevy_app(game, bevy_frontend::GameMode::VsPlayer);
+    let mut app = app::create_bevy_app(game, GameMode::VsPlayer);
     let pool = TaskPoolBuilder::new()
         .thread_name("Busy Behavior ThreadPool".to_string())
         .num_threads(1)
