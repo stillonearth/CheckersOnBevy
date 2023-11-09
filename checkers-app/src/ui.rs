@@ -136,7 +136,7 @@ fn pass_turn_button_system(
                 selected_piece.entity = None;
                 game.state.turn.change();
 
-                if game_mode.clone() == GameMode::VsNetwork {
+                if *game_mode == GameMode::VsNetwork {
                     if *state.get() == AppState::Player1Turn {
                         next_state.set(AppState::Player2Turn);
                     }

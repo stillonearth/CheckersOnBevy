@@ -62,5 +62,5 @@ pub fn create_bevy_app(game: game::Game, game_mode: GameMode) -> App {
 
     app.add_state::<AppState>();
 
-    return app;
+    app
 }

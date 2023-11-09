@@ -63,7 +63,7 @@ fn on_veilid_initialized(
 ) {
     for _ in er_world_initialized.iter() {
         for (mut text, _tag) in text_query.iter_mut() {
-            let str = format!("Veilid Initialized");
+            let str = "Veilid Initialized".to_string();
             text.sections[0].value = str;
         }
 
@@ -303,7 +303,7 @@ fn paste_dht_key_button_system(
                 let dht_key = bevy_veilid::veilid_duplex::utils::crypto_key_from_str(dht_key);
                 if dht_key.is_err() {
                     for (mut text, _tag) in text_query.iter_mut() {
-                        let str = format!("Bad DHT Key in clipboard, try again");
+                        let str = "Bad DHT Key in clipboard, try again".to_string();
                         text.sections[0].value = str;
                     }
                     return;
