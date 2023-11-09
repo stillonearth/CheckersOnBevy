@@ -15,14 +15,7 @@ A checkers app with:
 - **0.5.0** `bevy` updated to 0.11
 - **0.6.0** `bevy` checkers-p2p to play over network
 
-
----
-
-## 🏗️ Building 🏁 Checkers Game with 🕊 Bevy and 🦀 Rust
-
-On high-level project is structured with [workspace](https://doc.rust-lang.org/cargo/reference/manifest.html#the-workspace-field) feature of Cargo.toml.
-
-Project is organized in following manner:
+## Structure
 
 ```
 CheckersOnBevy
@@ -39,14 +32,14 @@ CheckersOnBevy
 
 1. Install pytorch and rust
 2. git clone repository
-3. Build project with cargo build
-4. cargo run --bin checkers-app
-
+3. Build project with `cargo build`
+4. `cargo run --bin checkers-app`
 
 ## Usage
 
 ```
 cargo run --bin checkers-p2p # run p2p app
+
 cargo run --bin checkers-app # run vsai app
 cargo run --bin checkers-server # run server to train ai
 cargo run --bin checkers-client # run client to see AI training process (see checkers-ai)
