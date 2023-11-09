@@ -1,10 +1,11 @@
 [package]
 edition = "2021"
 name = "checkers-client"
-version = "0.4.1"
+version = "0.6.0"
 
 [dependencies]
 anyhow = "1.0.68"
+bevy_mod_picking = "0.15"
 bevy = { version = "0.11" }
 bevy_tasks = "0.11"
 checkers-app = { path = "../checkers-app" }

@@ -257,6 +257,7 @@ fn copy_dht_key_button_system(
                 let mut ctx = ClipboardContext::new().unwrap();
                 let msg = format!("{}", veilid_app.unwrap().our_dht_key);
                 ctx.set_contents(msg.to_owned()).unwrap();
+                ctx.get_contents().unwrap();
 
                 for (mut s, _) in veilid_ui_query.iter_mut() {
                     s.display = Display::None;

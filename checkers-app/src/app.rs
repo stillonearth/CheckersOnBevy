@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_mod_picking::prelude::*;
 
 use checkers_core::game;
@@ -47,7 +46,6 @@ pub fn create_bevy_app(game: game::Game, game_mode: GameMode) -> App {
         .add_plugins(DefaultPickingPlugins)
         .add_plugins(BoardPlugin)
         .add_plugins(UIPlugin)
-        // .add_plugins(WorldInspectorPlugin::new())
         .init_resource::<Materials>()
         .insert_resource(game)
         .insert_resource(game_mode)
@@ -61,6 +59,8 @@ pub fn create_bevy_app(game: game::Game, game_mode: GameMode) -> App {
     if game_mode == GameMode::VsAI {
         app.add_plugins(AIGamePlugin);
     }
+
+    app.add_state::<AppState>();
 
     return app;
 }
