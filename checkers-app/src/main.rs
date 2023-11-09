@@ -1,39 +1,25 @@
-use std::sync::Arc;
-use std::sync::Mutex;
-
-use bevy::prelude::*;
-use bevy_tasks::TaskPoolBuilder;
-
-use checkers_ai::brain;
+use checkers_app::app::*;
+use checkers_app::*;
 use checkers_core::game;
+use clap::Parser;
 
-mod bevy_frontend;
-
-use crate::bevy_frontend::AppState;
-use crate::bevy_frontend::CheckersBrain;
-use crate::bevy_frontend::CheckersTaskPool;
+#[derive(Parser, Debug)]
+struct Args {
+    #[arg(long)]
+    mode: String,
+}
 
 fn main() {
-    let root_dir = env!("CARGO_MANIFEST_DIR");
-    let model_path = format!("{}{}", root_dir, "/assets/model.onnx");
+    let args = Args::parse();
 
-    let brain = CheckersBrain(Arc::new(Mutex::new(brain::Brain::new(model_path))));
-    let pool = CheckersTaskPool(
-        TaskPoolBuilder::new()
-            .thread_name("Busy Behavior ThreadPool".to_string())
-            .num_threads(1)
-            .build(),
-    );
-    let game = game::Game::new();
+    let game_mode = match args.mode.as_str() {
+        "ai" => GameMode::VsAI,
+        "p2p" => GameMode::VsNetwork,
+        _ => GameMode::VsPlayer,
+    };
 
-    let mut app = bevy_frontend::create_bevy_app(game /*pool, brain*/);
-
-    app.insert_resource(brain);
-    app.insert_resource(pool);
-
+    let mut app = create_bevy_app(game::Game::new(), game_mode);
     app.add_state::<AppState>();
-    app.add_systems(Update, bevy_frontend::computer_turn);
-    app.add_plugins(bevy_frontend::UIPlugin);
 
     app.run();
 }

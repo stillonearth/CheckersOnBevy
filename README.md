@@ -20,6 +20,7 @@ In the first half of this project, we will implement a classic English Checkers 
 - **0.4.0** `tch-rs` switched to `tract-onnx `
 - **0.4.1** `bevy` updated to 0.9.0
 - **0.5.0** `bevy` updated to 0.11
+- **0.6.0** `bevy` checkers-p2p to play over network
 
 ### 🎯 Project Goals
 
@@ -48,6 +49,7 @@ CheckersOnBevy
  |--checkers-app    # Bevy front-end application
  |   |--assets      # Models, Fonts and pictures
  |--checkers-ai     # Python code to train a model and Rust deployment
+ |--checkers-p2p    # Play over p2p network
  |--checkers-server # gRPC server with game core mechanics
  `--checkers-client # Bevy frontend that connects with server.
 ```
@@ -380,6 +382,12 @@ class ActorCritic(nn.Module):
 2. Train a model in jupyter notebook `checkers-ai/python/MTSC-Checkers.ipynb`
 
 ---
+
+## 4. Just Play the Game
+
+```
+cargo run --bin checkers-p2p
+```
 
 ## 📈 Results
 
