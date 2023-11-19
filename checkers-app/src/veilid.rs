@@ -61,7 +61,7 @@ fn on_veilid_initialized(
         Query<(Entity, &VeilidButtonPasteDHT, &mut Visibility)>,
     )>,
 ) {
-    for _ in er_world_initialized.iter() {
+    for _ in er_world_initialized.read() {
         for (mut text, _tag) in text_query.iter_mut() {
             let str = "Veilid Initialized".to_string();
             text.sections[0].value = str;
@@ -79,10 +79,8 @@ fn on_veilid_initialized(
 fn init_veilid_overlay_ui(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut next_state: ResMut<NextState<AppState>>,
+    // mut next_state: ResMut<NextState<AppState>>,
 ) {
-    next_state.set(AppState::MainMenu);
-
     let font = asset_server.load("Roboto-Regular.ttf");
     let text = Text::from_section(
         "Awaiting other player...",
@@ -298,8 +296,9 @@ fn paste_dht_key_button_system(
     for (_, interaction, mut color) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Pressed => {
-                let mut clippy_ctx = ClipboardContext::new().unwrap();
-                let dht_key = clippy_ctx.get_contents().unwrap();
+                // let mut clippy_ctx = ClipboardContext::new().unwrap();
+                // let dht_key = clippy_ctx.get_contents().unwrap();
+                let dht_key = "".to_string();
                 let dht_key = bevy_veilid::veilid_duplex::utils::crypto_key_from_str(dht_key);
                 if dht_key.is_err() {
                     for (mut text, _tag) in text_query.iter_mut() {
@@ -343,7 +342,7 @@ fn event_on_veilid_message(
     mut ew_connected_peer: EventWriter<EventConnectedPeer>,
 ) {
     let current_turn = app_state.into_inner().clone();
-    for m in er_rm.iter() {
+    for m in er_rm.read() {
         let message = m.message.clone();
         if let Some(message) = message.extra {
             if message == "CONNECT" {
@@ -370,7 +369,7 @@ pub fn send_state_to_peer(
     game: ResMut<game::Game>,
     veilid_add: Res<VeilidApp>,
 ) {
-    for _ in er_player_move.iter() {
+    for _ in er_player_move.read() {
         println!(
             "sending state {:?} to peer {:?}",
             game.state.clone(),
@@ -391,7 +390,8 @@ fn on_ev_connected_peer(
     mut er_awaiting_peer: EventReader<EventConnectedPeer>,
     mut plugin_settings: ResMut<P2POverlayUISettings>,
 ) {
-    for _ in er_awaiting_peer.iter() {
+    info!("im here");
+    for _ in er_awaiting_peer.read() {
         plugin_settings.awaiting_other_peer = false;
     }
 }

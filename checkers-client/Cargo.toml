@@ -5,8 +5,8 @@ version = "0.4.1"
 
 [dependencies]
 anyhow = "1.0.68"
-bevy = { version = "0.11" }
-bevy_tasks = "0.11"
+bevy = { version = "0.12" }
+bevy_tasks = "0.12"
 checkers-app = { path = "../checkers-app" }
 checkers-core = { path = "../checkers-core" }
 futures = "0.3.25"

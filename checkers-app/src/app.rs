@@ -30,12 +30,11 @@ fn setup(mut commands: Commands) {
     camera_transform.scale.z = 1.5;
 
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            transform: camera_transform,
-            ..Default::default()
-        })
-        .insert(RaycastPickCamera::default());
+    commands.spawn(Camera3dBundle {
+        transform: camera_transform,
+        ..Default::default()
+    });
+    // .insert(RaycastPickCamera::default());
 }
 
 pub fn create_bevy_app(game: game::Game, game_mode: GameMode) -> App {

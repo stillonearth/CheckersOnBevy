@@ -3,20 +3,21 @@ edition = "2021"
 name = "checkers-app"
 version = "0.6.0"
 
+
 [dependencies]
-bevy = { version = "0.11" }
-bevy_tasks = "0.11"
-bevy_mod_picking = { version = "0.15", features = [    "backend_raycast",
+bevy = { version = "0.12" }
+bevy_tasks = "0.12"
+bevy_mod_picking = { version = "0.17", features = [    
+    "backend_raycast",
     "backend_bevy_ui",
     "backend_sprite",
     "selection",
     "highlight",] }
-bevy_tweening = { version ="0.8" }
-bevy_veilid = { version ="0.1.2" }
-bevy-inspector-egui = "0.20"
+bevy_tweening = { version ="0.9" }
+bevy_veilid = { path="../../bevy_veilid" }
+bevy-inspector-egui = "0.21"
 checkers-ai = { path = "../checkers-ai" }
 checkers-core = { path = "../checkers-core" }
 clap = { version = "4.3.21", features = ["derive"] }
 copypasta = "0.10"
-futures = "0.3"
 serde = { version = "1.0.188", features= ["derive"] }

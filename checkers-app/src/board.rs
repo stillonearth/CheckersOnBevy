@@ -322,7 +322,7 @@ pub fn create_board(
         commands.spawn((
             bundle,
             PickableBundle::default(),
-            RaycastPickTarget::default(),
+            // RaycastPickTarget::default(),
             *square,
             On::<Pointer<Click>>::run(event_selected_square),
         ));
@@ -345,7 +345,7 @@ fn event_piece_moved(
     mut picking_events: EventReader<EventPieceMove>,
     mut query: Query<(Entity, &game::Piece, &Transform)>,
 ) {
-    for event in picking_events.iter() {
+    for event in picking_events.read() {
         let (entity, piece, transform) = query.get_mut(event.0).unwrap();
 
         let tween = Tween::new(
@@ -366,7 +366,7 @@ fn event_piece_off_board(
     mut commands: Commands,
     mut picking_events: EventReader<EventPieceOffBoard>,
 ) {
-    for event in picking_events.iter() {
+    for event in picking_events.read() {
         // let (entity, piece, transform) = query.get_mut(event.0).unwrap();
 
         let num_removed_pieces = game
