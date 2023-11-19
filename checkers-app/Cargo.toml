@@ -3,7 +3,6 @@ edition = "2021"
 name = "checkers-app"
 version = "0.6.0"
 
-
 [dependencies]
 bevy = { version = "0.12" }
 bevy_tasks = "0.12"
@@ -14,7 +13,7 @@ bevy_mod_picking = { version = "0.17", features = [
     "selection",
     "highlight",] }
 bevy_tweening = { version ="0.9" }
-bevy_veilid = { path="../../bevy_veilid" }
+bevy_veilid = { git="https://github.com/stillonearth/bevy_veilid", rev="70c45f5"}
 bevy-inspector-egui = "0.21"
 checkers-ai = { path = "../checkers-ai" }
 checkers-core = { path = "../checkers-core" }
